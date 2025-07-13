@@ -1,0 +1,19 @@
+.HomeScreen {
+  text-align: center;
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  height: 50vh;
+}
+
+.title{
+  font-size: larger;
+  margin-top: 20px;
+  flex:1;
+}
+
+.button{
+  flex:1;
+  padding-bottom: 200px;
+}
