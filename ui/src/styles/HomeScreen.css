@@ -1,0 +1,44 @@
+.HomeScreen {
+  text-align: center;
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  height: 50vh;
+}
+
+.title{
+  font-size: 72px;
+  margin-top: 20px;
+  flex:1;
+}
+
+.lobbyButton {
+  flex: 1;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: none;
+  width: 25vw;
+  background: linear-gradient(90deg, #4f8cff 0%, #38e6c5 100%);
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: 400;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(79, 140, 255, 0.15);
+  transition: background 0.2s, transform 0.1s;
+}
+
+.lobbyButton:hover {
+  background: linear-gradient(90deg, #38e6c5 0%, #4f8cff 100%);
+  transform: translateY(-2px) scale(1.03);
+}
+
+.lobbyKeyInput {
+  width: 50vw;
+  padding: 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  height: 5vh;
+  font-size: larger;
+}

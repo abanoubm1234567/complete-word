@@ -15,11 +15,11 @@ function HomeScreen() {
         onChange={(e) => setLobbyKey(e.target.value)}
       ></input>
 
-      <button className="button>">Join Exisiting</button>
+      <button className="lobbyButton">Join Exisiting</button>
 
       <p>or</p>
-      <button className="button>">Create New Lobby</button>
-    </div>
+      <button className="lobbyButton">Create New Lobby</button>
+    </div> 
   );
 }
 
