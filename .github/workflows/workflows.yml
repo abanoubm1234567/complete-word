@@ -3,7 +3,7 @@ name: FastAPI Cloud Run Deploy
 on:
   push:
     branches:
-      - main
+      - "*"
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api: ${{ steps.filter.outputs.api }}
+      ui: ${{ steps.filter.outputs.ui }}
+      workflow: ${{ steps.filter.outputs.workflow }}
     steps:
       - uses: actions/checkout@v3
       - uses: dorny/paths-filter@v3
@@ -29,7 +31,7 @@ jobs:
             workflow:
               - '.github/workflows/**'
 
-  deploy:
+  fastapi-deploy:
     needs: detect-changes
     if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
