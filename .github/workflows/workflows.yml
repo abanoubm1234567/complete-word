@@ -30,7 +30,7 @@ jobs:
               - 'ui/**'
             workflow:
               - '.github/workflows/**'
- 
+
   fastapi-deploy:
     needs: detect-changes
     if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
