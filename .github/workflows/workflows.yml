@@ -24,10 +24,14 @@ jobs:
           filters: |
             api:
               - 'api/**'
+            ui:
+              - 'ui/**'
+            workflow:
+              - '.github/workflows/**'
 
   deploy:
     needs: detect-changes
-    if: needs.detect-changes.outputs.api == 'true'
+    if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
