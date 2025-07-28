@@ -1,25 +1,50 @@
+import React, { useState, useRef } from "react";
+import "bootstrap/dist/css/bootstrap.min.css";
+import { useNavigate } from "react-router-dom";
 import "../styles/HomeScreen.css";
-import React, { useState } from "react";
 
 function HomeScreen() {
-  const [lobbyKey, setLobbyKey] = useState("");
+  const joinLobbyKey = useRef("");
+  const nav = useNavigate();
+
+  const handleCreate = () => {
+    nav("/create");
+  };
 
   return (
-    <div className="HomeScreen">
+    <div
+      className="HomeScreen"
+      style={{
+        backgroundColor: "grey",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <h1 className="title">Word Race</h1>
 
-      <input
-        type="text"
-        className="lobbyKeyInput"
-        placeholder="Enter lobby key"
-        onChange={(e) => setLobbyKey(e.target.value)}
-      ></input>
+      <div className="input-group mb-3" style={{ width: "50%" }}>
+        <span className="input-group-text" id="basic-addon1">
+          Lobby Key:
+        </span>
 
-      <button className="lobbyButton">Join Exisiting</button>
+        <input
+          type="text"
+          className="form-control"
+          aria-label="Username"
+          aria-describedby="basic-addon1"
+          onChange={(e) => (joinLobbyKey.current = e.target.value)}
+        />
+      </div>
 
-      <p>or</p>
-      <button className="lobbyButton">Create New Lobby</button>
-    </div> 
+      <button style={{ marginBottom: 20 }} className="btn btn-success">
+        Join
+      </button>
+
+      <button className="btn btn-primary" onClick={handleCreate}>
+        Create New Lobby
+      </button>
+    </div>
   );
 }
 
