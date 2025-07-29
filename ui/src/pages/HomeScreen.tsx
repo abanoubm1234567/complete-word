@@ -16,7 +16,12 @@ function HomeScreen() {
       setDisplayNameError(true);
       return;
     }
-    nav("/create");
+    nav("/lobby", {
+      state: {
+        operation: "create",
+        display_name: displayName.current,
+      },
+    });
   };
 
   const handleDisplayNameChange = (value: String) => {
@@ -51,7 +56,7 @@ function HomeScreen() {
 
           <input
             type="text"
-            className="form-control"
+            className={"form-control" + (displayNameError ? " is-invalid" : "")}
             aria-label="Username"
             aria-describedby="basic-addon1"
             onChange={(e) => handleDisplayNameChange(e.target.value)}

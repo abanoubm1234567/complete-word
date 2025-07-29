@@ -1,13 +1,13 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from './pages/HomeScreen';
-import CreateLobby from './pages/CreateLobby';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "./pages/HomeScreen";
+import Lobby from "./pages/Lobby";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/create" element={<CreateLobby />} />
+        <Route path="/lobby" element={<Lobby />} />
       </Routes>
     </Router>
   );

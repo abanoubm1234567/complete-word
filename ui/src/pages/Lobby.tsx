@@ -1,16 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 
-function CreateLobby() {
+function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
+  const initialRenderComplete = useRef<boolean>(false);
 
+  const location = useLocation();
+
+  //Create a lobby if the user comes in with the "create" operation
   useEffect(() => {
+    if (initialRenderComplete.current || location.state?.operation !== "create")
+      return;
+    initialRenderComplete.current = true;
+    const displayName = location.state?.display_name;
     axios
-      .get("http://127.0.0.1:8000/create")
+      .post("http://127.0.0.1:8000/create", null, {
+        params: {
+          display_name: displayName,
+        },
+      })
       .then((response) => {
-        console.log("Response from API:", response.data);
         if (response.data) {
-          console.log("New Lobby Key:", response.data);
           setNewLobbyKey(response.data);
         }
       })
@@ -40,4 +51,4 @@ function CreateLobby() {
   return <div>{newLobbyKey ? newLobbyKey : spinner()}</div>;
 }
 
-export default CreateLobby;
+export default Lobby;
