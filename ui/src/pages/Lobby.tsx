@@ -48,7 +48,26 @@ function Lobby() {
     );
   };
 
-  return <div>{newLobbyKey ? newLobbyKey : spinner()}</div>;
+  const lobbyView = () => {
+    return (
+      <div
+        className="d-flex justify-content-center"
+        style={{
+          marginTop: "20vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <h2>Lobby Created Successfully!</h2>
+        <p>Your Lobby Key: {newLobbyKey}</p>
+        <p>Share this key with your friend to join the lobby.</p>
+        <p>Lobby Status: </p>
+      </div>
+    );
+  };
+
+  return <div>{newLobbyKey ? lobbyView() : spinner()}</div>;
 }
 
 export default Lobby;
