@@ -4,16 +4,23 @@ import { useLocation } from "react-router-dom";
 
 function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
+
   const initialRenderComplete = useRef<boolean>(false);
+  const socketRef = useRef<WebSocket | null>(null);
+  const displayNameRef = useRef<string | null>(null);
 
   const location = useLocation();
 
   //Create a lobby if the user comes in with the "create" operation
+  //then send a request to the backend to create a lobby
+  //and store the lobby key in the state
   useEffect(() => {
     if (initialRenderComplete.current || location.state?.operation !== "create")
       return;
     initialRenderComplete.current = true;
     const displayName = location.state?.display_name;
+    console.log("Creating lobby with display name:", displayName);
+    displayNameRef.current = displayName;
     axios
       .post("http://127.0.0.1:8000/create", null, {
         params: {
@@ -30,6 +37,33 @@ function Lobby() {
         setNewLobbyKey("Error creating lobby. Please try again.");
       });
   }, []);
+
+  // Join an existing lobby if the user comes in with a lobby key
+  useEffect(() => {
+    if (initialRenderComplete.current || location.state?.operation !=="join") return;
+    initialRenderComplete.current = true;
+    const lobbyKey = location.state.lobby_key;
+    console.log("Joining lobby with key:", lobbyKey);
+    displayNameRef.current = location.state.display_name;
+    setNewLobbyKey(lobbyKey);
+  });
+
+  useEffect(() => {
+    if (!newLobbyKey || !displayNameRef.current) return;
+    const ws = new WebSocket(
+      `ws://localhost:8000/lobby/${newLobbyKey}?display_name=${encodeURIComponent(
+        displayNameRef.current
+      )}`
+    );
+    socketRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("WebSocket connection established.");
+    };
+  }, [newLobbyKey]);
+
+  
+
 
   const spinner = () => {
     return (
