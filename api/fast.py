@@ -39,16 +39,20 @@ class Lobby:
         self.playersToSockets.pop(display_name, None)
 
     def is_empty(self) -> bool:
-        return all(ws is None for ws in self.playersToSockets.values())
+        for _, ws in self.playersToSockets.items():
+            if ws is not None:
+                return False
+        return True
 
     def to_dict(self):
         return {
             "key": self.key,
             "playersToSockets": str(self.playersToSockets),
         }
-
-# Read the lobbies from lobbies.json file
 lobbies = {}
+'''
+# Read the lobbies from lobbies.json file
+
 with open("lobbies.json", "r") as file:
     try:
         lobbies_data = json.load(file)
@@ -63,8 +67,7 @@ def save_on_shutdown():
     with open("lobbies.json", "w") as f:
         json.dump(lobbies, f, indent=2)
     print("Saved lobbies to lobbies.json")
-
-
+'''
 @app.get("/")
 def read_root():
     result = []
@@ -78,6 +81,7 @@ async def create(display_name: str):
     lobby_key = uuid.uuid4().hex
     new_lobby = Lobby(key=lobby_key)
     lobbies[lobby_key] = new_lobby
+    lobbies[lobby_key].playersToSockets[display_name] = None
     print(f"Created lobby with key: {lobby_key}")
     return lobby_key
 
@@ -110,6 +114,13 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     lobby.playersToSockets[display_name] = websocket
     print(f"{display_name} connected to lobby {lobby_key}. Current players: {str(lobby.playersToSockets)}")
     await lobby.broadcast(f"{display_name} has joined.")
+
+    if len(lobby.playersToSockets) == 1:
+        lobby.status = LobbyStatus.WAITING
+        await lobby.broadcast("Waiting for more players to join...")
+    else:
+        lobby.status = LobbyStatus.IN_PROGRESS
+        await lobby.broadcast("Game can start now!")
 
     try:
         while True:

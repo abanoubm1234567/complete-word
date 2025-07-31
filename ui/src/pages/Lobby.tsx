@@ -4,6 +4,7 @@ import { useLocation } from "react-router-dom";
 
 function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
+  const [lobbyMessages, setLobbyMessages] = useState<string[]>([]);
 
   const initialRenderComplete = useRef<boolean>(false);
   const socketRef = useRef<WebSocket | null>(null);
@@ -40,7 +41,8 @@ function Lobby() {
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
-    if (initialRenderComplete.current || location.state?.operation !=="join") return;
+    if (initialRenderComplete.current || location.state?.operation !== "join")
+      return;
     initialRenderComplete.current = true;
     const lobbyKey = location.state.lobby_key;
     console.log("Joining lobby with key:", lobbyKey);
@@ -60,10 +62,28 @@ function Lobby() {
     ws.onopen = () => {
       console.log("WebSocket connection established.");
     };
+
+    ws.onmessage = (event) => {
+      const message = event.data;
+      console.log("Message from server:", message);
+      setLobbyMessages((lobbyMessages) => [...lobbyMessages, message]);
+    };
   }, [newLobbyKey]);
 
-  
-
+  useEffect(() => {
+    const disconnectWebSocket = () => {
+      if (socketRef.current) {
+        console.log("Closing WebSocket connection.");
+        socketRef.current.close();
+        socketRef.current = null;
+        setNewLobbyKey(null);
+      }
+    };
+    window.addEventListener("beforeunload", disconnectWebSocket);
+    return () => {
+      window.removeEventListener("beforeunload", disconnectWebSocket);
+    };
+  });
 
   const spinner = () => {
     return (
@@ -93,10 +113,26 @@ function Lobby() {
           alignItems: "center",
         }}
       >
-        <h2>Lobby Created Successfully!</h2>
+        <h2>Welcome {location.state?.display_name}!</h2>
         <p>Your Lobby Key: {newLobbyKey}</p>
         <p>Share this key with your friend to join the lobby.</p>
-        <p>Lobby Status: </p>
+        <div
+          className="modal-dialog-scrollable"
+          style={{
+            maxHeight: "50vh",
+            backgroundColor: "gray",
+            padding: "20px",
+            borderRadius: "10px",
+            width: "80%",
+            overflow: "scroll",
+          }}
+        >
+          {lobbyMessages.map((msg, index) => (
+            <p key={index}>
+              <b>{msg}</b>
+            </p>
+          ))}
+        </div>
       </div>
     );
   };
