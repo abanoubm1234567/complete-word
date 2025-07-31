@@ -1,16 +1,19 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
   const [lobbyMessages, setLobbyMessages] = useState<string[]>([]);
+  const [gameCanStart, setGameCanStart] = useState<boolean>(false);
 
   const initialRenderComplete = useRef<boolean>(false);
   const socketRef = useRef<WebSocket | null>(null);
   const displayNameRef = useRef<string | null>(null);
 
   const location = useLocation();
+
+  const nav = useNavigate();
 
   //Create a lobby if the user comes in with the "create" operation
   //then send a request to the backend to create a lobby
@@ -64,26 +67,54 @@ function Lobby() {
     };
 
     ws.onmessage = (event) => {
-      const message = event.data;
+      const message = JSON.parse(event.data);
       console.log("Message from server:", message);
-      setLobbyMessages((lobbyMessages) => [...lobbyMessages, message]);
+      switch (message.type) {
+        case 1: // INFO
+          break;
+        case 2: // COMM
+          setLobbyMessages((lobbyMessages) => [
+            ...lobbyMessages,
+            message.player + ": " + message.message,
+          ]);
+          break;
+        case 3: // BROADCAST
+          setLobbyMessages((lobbyMessages) => [
+            ...lobbyMessages,
+            "LOBBY: " + message.message,
+          ]);
+          break;
+        default:
+          console.warn("Unknown message type:", message.type);
+      }
     };
   }, [newLobbyKey]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {
       if (socketRef.current) {
-        console.log("Closing WebSocket connection.");
-        socketRef.current.close();
-        socketRef.current = null;
-        setNewLobbyKey(null);
+        localStorage.setItem("wasInLobby", "true");
       }
     };
     window.addEventListener("beforeunload", disconnectWebSocket);
     return () => {
       window.removeEventListener("beforeunload", disconnectWebSocket);
     };
-  });
+  }, []);
+
+  useEffect(() => {
+    const wasInLobby = localStorage.getItem("wasInLobby");
+    if (wasInLobby) {
+      localStorage.removeItem("wasInLobby");
+      console.log("Closing WebSocket connection.");
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
+      setNewLobbyKey(null);
+      nav("/");
+    }
+  }, []);
 
   const spinner = () => {
     return (
@@ -100,6 +131,10 @@ function Lobby() {
         <div className="spinner-border" role="status"></div>
       </div>
     );
+  };
+
+  const handleStart = () => {
+    alert("Game is starting!");
   };
 
   const lobbyView = () => {
@@ -132,6 +167,39 @@ function Lobby() {
               <b>{msg}</b>
             </p>
           ))}
+        </div>
+        <div className="input-group mb-3" style={{ width: "80%", marginTop: 5 }}>
+          <span className="input-group-text" id="basic-addon1">
+            Message
+          </span>
+          <input
+            type="text"
+            className="form-control"
+            aria-label="Message"
+            aria-describedby="basic-addon1"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (socketRef.current) {
+                  socketRef.current.send(
+                    JSON.stringify({
+                      type: 2,
+                      message: e.currentTarget.value,
+                    })
+                  );
+                  e.currentTarget.value = "";
+                }
+              }
+            }}
+          />
+          {gameCanStart ? (
+            <button
+              style={{ marginBottom: 20, marginTop: 20 }}
+              className="btn btn-success"
+              onClick={handleStart}
+            >
+              Start
+            </button>
+          ) : null}
         </div>
       </div>
     );

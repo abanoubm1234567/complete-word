@@ -1,8 +1,7 @@
-from typing import List
 import uuid
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from enum import Enum
+from enum import Enum, IntEnum
 import json
 
 
@@ -18,22 +17,34 @@ app.add_middleware(
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
+    READY = "ready"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
 
+class MessageType(IntEnum):
+    INFO =1, 
+    COMM = 2, 
+    BROADCAST = 3
+
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None):
+    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None):
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
+        self.leader = leader
 
-    async def broadcast(self, message: str):
-        for player, ws in self.playersToSockets.items():
+    async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
+        for _, ws in self.playersToSockets.items():
             if ws is not None:
                 try:
-                    await ws.send_text(message)
+                    await ws.send_json({
+                        "message": message,
+                        "player": player,
+                        "status": self.status,
+                        "type": message_type.value,
+                    })
                 except Exception as e:
-                    print(f"Error sending to {player}: {e}")
+                    print(f"Error sending: {e}")
 
     def disconnect(self, display_name: str):
         self.playersToSockets.pop(display_name, None)
@@ -82,6 +93,7 @@ async def create(display_name: str):
     new_lobby = Lobby(key=lobby_key)
     lobbies[lobby_key] = new_lobby
     lobbies[lobby_key].playersToSockets[display_name] = None
+    lobbies[lobby_key].leader = display_name
     print(f"Created lobby with key: {lobby_key}")
     return lobby_key
 
@@ -113,22 +125,29 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
     lobby.playersToSockets[display_name] = websocket
     print(f"{display_name} connected to lobby {lobby_key}. Current players: {str(lobby.playersToSockets)}")
-    await lobby.broadcast(f"{display_name} has joined.")
+    await lobby.broadcast(f"{display_name} has joined.", None, MessageType.BROADCAST)
 
-    if len(lobby.playersToSockets) == 1:
+    if len(lobby.playersToSockets) < 2:
         lobby.status = LobbyStatus.WAITING
-        await lobby.broadcast("Waiting for more players to join...")
+        await lobby.broadcast("Waiting for more players to join...", None, MessageType.BROADCAST)
     else:
-        lobby.status = LobbyStatus.IN_PROGRESS
-        await lobby.broadcast("Game can start now!")
+        lobby.status = LobbyStatus.READY
+        await lobby.broadcast("Game is ready to start!", None, MessageType.BROADCAST)
 
     try:
         while True:
             data = await websocket.receive_text()
-            await lobby.broadcast(f"{display_name} says: {data}")
+            await lobby.broadcast(json.loads(data)["message"], display_name, MessageType.COMM)
     except WebSocketDisconnect:
         lobby.disconnect(display_name)
-        await lobby.broadcast(f"{display_name} has disconnected.")
+
+        # Safely remove players with None WebSocket
+        to_remove = [player for player, ws in lobby.playersToSockets.items() if ws is None]
+        for player in to_remove:
+            del lobby.playersToSockets[player]
+
+        await lobby.broadcast(f"{display_name} has disconnected.", None, MessageType.BROADCAST)
+
         if lobby.is_empty():
             del lobbies[lobby_key]
             print(f"Lobby {lobby_key} deleted.")
