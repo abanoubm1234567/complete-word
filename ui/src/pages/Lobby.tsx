@@ -6,10 +6,18 @@ function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
   const [lobbyMessages, setLobbyMessages] = useState<string[]>([]);
   const [gameCanStart, setGameCanStart] = useState<boolean>(false);
+  const [lobbyStatus, setLobbyStatus] = useState<string>(
+    "Waiting for players..."
+  );
+  const [firstLetter, setFirstLetter] = useState<string>("");
+  const [lastLetter, setLastLetter] = useState<string>("");
+  const [round, setRound] = useState<number>(1);
 
+  const lobbyStatusRef = useRef<string>("waiting");
   const initialRenderComplete = useRef<boolean>(false);
   const socketRef = useRef<WebSocket | null>(null);
   const displayNameRef = useRef<string | null>(null);
+  const lobbyLeaderRef = useRef<string | null>(null);
 
   const location = useLocation();
 
@@ -68,9 +76,46 @@ function Lobby() {
 
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
+      if (!lobbyLeaderRef.current) {
+        lobbyLeaderRef.current = message.leader;
+      }
       console.log("Message from server:", message);
       switch (message.type) {
         case 1: // INFO
+          switch (message.status) {
+            case "ready":
+              setGameCanStart(true);
+              setLobbyStatus("Game is ready to start!");
+              lobbyStatusRef.current = "ready";
+              break;
+            case "waiting":
+              setGameCanStart(false);
+              setLobbyStatus("Waiting for players...");
+              lobbyStatusRef.current = "waiting";
+              break;
+            case "error":
+              // State changes (should be done synchronously)
+              setGameCanStart(false);
+              setLobbyStatus("Error: Leader disconnected. Lobby deleted.");
+              lobbyStatusRef.current = "error";
+              setNewLobbyKey(null);
+
+              // Close socket (clean up WebSocket connection)
+              socketRef.current?.close();
+
+              // Timeout before navigating away
+              setTimeout(() => {
+                localStorage.removeItem("wasInLobby");
+                nav("/"); // Navigate after 2 seconds
+              }, 2000);
+              break;
+            case "in_progress":
+              setLobbyStatus("Game is in progress!");
+              lobbyStatusRef.current = "in_progress";
+              break;
+            default:
+              console.warn("Unknown lobby status:", message.status);
+          }
           break;
         case 2: // COMM
           setLobbyMessages((lobbyMessages) => [
@@ -134,7 +179,25 @@ function Lobby() {
   };
 
   const handleStart = () => {
-    alert("Game is starting!");
+    if (!socketRef.current) return;
+    lobbyStatusRef.current = "in_progress";
+    setLobbyStatus("Game is in progress!");
+    socketRef.current.send(
+      JSON.stringify({
+        type: 1,
+        message: "startGame",
+      })
+    );
+  };
+
+  const gameView = () => {
+    return (
+      <div>
+        <p>Round {round}/5</p>
+        <p>First letter: {firstLetter}</p>
+        <p>Last letter: {lastLetter}</p>
+      </div>
+    );
   };
 
   const lobbyView = () => {
@@ -142,7 +205,7 @@ function Lobby() {
       <div
         className="d-flex justify-content-center"
         style={{
-          marginTop: "20vh",
+          marginTop: "5vh",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -151,6 +214,17 @@ function Lobby() {
         <h2>Welcome {location.state?.display_name}!</h2>
         <p>Your Lobby Key: {newLobbyKey}</p>
         <p>Share this key with your friend to join the lobby.</p>
+        <div style={{ display: "flex", flexDirection: "row" }}>
+          <p style={{ marginRight: 4 }}>Lobby Status: </p>
+          <p
+            style={{
+              color: lobbyStatusRef.current === "waiting" ? "red" : "green",
+            }}
+          >
+            {lobbyStatus}
+          </p>
+        </div>
+        {lobbyStatusRef.current === "in_progress" ? gameView() : null}
         <div
           className="modal-dialog-scrollable"
           style={{
@@ -159,7 +233,7 @@ function Lobby() {
             padding: "20px",
             borderRadius: "10px",
             width: "80%",
-            overflow: "scroll",
+            overflow: "auto",
           }}
         >
           {lobbyMessages.map((msg, index) => (
@@ -168,7 +242,10 @@ function Lobby() {
             </p>
           ))}
         </div>
-        <div className="input-group mb-3" style={{ width: "80%", marginTop: 5 }}>
+        <div
+          className="input-group mb-3"
+          style={{ width: "80%", marginTop: 5 }}
+        >
           <span className="input-group-text" id="basic-addon1">
             Message
           </span>
@@ -191,16 +268,17 @@ function Lobby() {
               }
             }}
           />
-          {gameCanStart ? (
-            <button
-              style={{ marginBottom: 20, marginTop: 20 }}
-              className="btn btn-success"
-              onClick={handleStart}
-            >
-              Start
-            </button>
-          ) : null}
         </div>
+
+        {gameCanStart && displayNameRef.current === lobbyLeaderRef.current ? (
+          <button
+            style={{ marginBottom: 20, marginTop: 20 }}
+            className="btn btn-success"
+            onClick={handleStart}
+          >
+            Start
+          </button>
+        ) : null}
       </div>
     );
   };

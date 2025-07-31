@@ -20,6 +20,7 @@ class LobbyStatus(str, Enum):
     READY = "ready"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+    ERROR = "error"
 
 class MessageType(IntEnum):
     INFO =1, 
@@ -42,6 +43,7 @@ class Lobby:
                         "player": player,
                         "status": self.status,
                         "type": message_type.value,
+                        "leader": self.leader
                     })
                 except Exception as e:
                     print(f"Error sending: {e}")
@@ -79,6 +81,10 @@ def save_on_shutdown():
         json.dump(lobbies, f, indent=2)
     print("Saved lobbies to lobbies.json")
 '''
+
+round = 0
+maxNumberOfRounds = 5
+
 @app.get("/")
 def read_root():
     result = []
@@ -129,15 +135,26 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
     if len(lobby.playersToSockets) < 2:
         lobby.status = LobbyStatus.WAITING
-        await lobby.broadcast("Waiting for more players to join...", None, MessageType.BROADCAST)
+        await lobby.broadcast("Waiting for more players to join...", None, MessageType.INFO)
     else:
         lobby.status = LobbyStatus.READY
-        await lobby.broadcast("Game is ready to start!", None, MessageType.BROADCAST)
+        await lobby.broadcast("Game is ready to start!", None, MessageType.INFO)
 
     try:
         while True:
             data = await websocket.receive_text()
-            await lobby.broadcast(json.loads(data)["message"], display_name, MessageType.COMM)
+            if (json.loads(data)["type"] == MessageType.INFO.value and json.loads(data)["message"] == "startGame"):
+                if lobby.status == LobbyStatus.READY:
+                    lobby.status = LobbyStatus.IN_PROGRESS
+                    await lobby.broadcast("Game is starting!", None, MessageType.INFO)
+                else:
+                    await websocket.send_json({
+                        "message": "Only the leader can start the game.",
+                        "type": MessageType.INFO.value
+                    })
+                
+            elif (json.loads(data)["type"] == MessageType.COMM.value):
+                await lobby.broadcast(json.loads(data)["message"], display_name, MessageType.COMM)
     except WebSocketDisconnect:
         lobby.disconnect(display_name)
 
@@ -147,6 +164,15 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
             del lobby.playersToSockets[player]
 
         await lobby.broadcast(f"{display_name} has disconnected.", None, MessageType.BROADCAST)
+
+        if lobby.leader not in lobby.playersToSockets:
+            lobby.status = LobbyStatus.ERROR
+            await lobby.broadcast("Leader disconnected. Deleting lobby...", None, MessageType.BROADCAST)
+            await lobby.broadcast("", None, MessageType.INFO)
+
+        if len(lobby.playersToSockets) < 2:
+            lobby.status = LobbyStatus.WAITING
+            await lobby.broadcast("Waiting for more players to join...", None, MessageType.INFO)
 
         if lobby.is_empty():
             del lobbies[lobby_key]
