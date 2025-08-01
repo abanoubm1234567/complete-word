@@ -1,5 +1,6 @@
 {
   "name": "complete-word",
+  "homepage": "https://abanoubm1234567.github.io/complete-word",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -22,6 +23,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -48,5 +51,8 @@
   "resolutions": {
     "@types/react": "17.0.2",
     "@types/react-dom": "17.0.2"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0"
   }
 }

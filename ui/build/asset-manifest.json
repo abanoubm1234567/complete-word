@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/complete-word/static/css/main.23de4926.css",
+    "main.js": "/complete-word/static/js/main.560fc8df.js",
+    "static/js/453.94856b33.chunk.js": "/complete-word/static/js/453.94856b33.chunk.js",
+    "index.html": "/complete-word/index.html",
+    "main.23de4926.css.map": "/complete-word/static/css/main.23de4926.css.map",
+    "main.560fc8df.js.map": "/complete-word/static/js/main.560fc8df.js.map",
+    "453.94856b33.chunk.js.map": "/complete-word/static/js/453.94856b33.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.23de4926.css",
+    "static/js/main.560fc8df.js"
+  ]
+}
