@@ -30,12 +30,14 @@ class MessageType(IntEnum):
     BROADCAST = 3
 
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1):
+    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None):
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
         self.leader = leader
         self.round = round
+        self.firstLetter = firstLetter
+        self.lastLetter = lastLetter
 
     async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
         for _, ws in self.playersToSockets.items():
@@ -47,7 +49,9 @@ class Lobby:
                         "status": self.status,
                         "type": message_type.value,
                         "leader": self.leader,
-                        "round": self.round
+                        "round": self.round,
+                        "firstLetter": self.firstLetter,
+                        "lastLetter": self.lastLetter
                     })
                 except Exception as e:
                     print(f"Error sending: {e}")
@@ -86,9 +90,6 @@ def save_on_shutdown():
     print("Saved lobbies to lobbies.json")
 '''
 
-bad_start = {"x", "q", "z", "j", "v", "y"}
-bad_end = {"q", "j", "v", "x", "z"}
-
 @app.get("/")
 def read_root():
     result = []
@@ -121,6 +122,16 @@ async def join(lobby_key: str, display_name: str):
 
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
+    bad_start = {"x", "q", "z", "j", "v", "y"}
+    bad_end = {"q", "j", "v", "x", "z"}
+
+    def is_valid_word(word: str, first_letter: str, last_letter: str) -> bool:
+        if(len(word)> 1 and word.isalpha() and word[0]==first_letter and word[-1]==last_letter):
+            d = enchant.Dict("en_US")
+            return d.check(word)
+        print('inavlid word')
+        return False
+
     await websocket.accept()
     display_name = websocket.query_params.get("display_name")
     if not display_name:
@@ -151,21 +162,16 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
             #If it is a COMM, are we mid game?
 
             if (json.loads(data)["type"] == MessageType.INFO.value and json.loads(data)["message"] == "startGame"):
-                if lobby.status == LobbyStatus.READY:
+                if lobby.status == LobbyStatus.READY or lobby.status == LobbyStatus.COMPLETED:
                     lobby.status = LobbyStatus.IN_PROGRESS
                     await lobby.broadcast("Game is starting!", None, MessageType.INFO)
-                    firstLetter = random.choice(string.ascii_lowercase)
-                    while firstLetter in bad_start:
-                        firstLetter = random.choice(string.ascii_lowercase)
-                    lastLetter = random.choice(string.ascii_lowercase)
-                    while lastLetter in bad_end:
-                        lastLetter = random.choice(string.ascii_lowercase)
-                    await lobby.broadcast(firstLetter+lastLetter, None, MessageType.INFO)
-                else:
-                    await websocket.send_json({
-                        "message": "Only the leader can start the game.",
-                        "type": MessageType.INFO.value
-                    })
+                    lobby.firstLetter = random.choice(string.ascii_lowercase)
+                    while lobby.firstLetter in bad_start:
+                        lobby.firstLetter = random.choice(string.ascii_lowercase)
+                    lobby.lastLetter = random.choice(string.ascii_lowercase)
+                    while lobby.lastLetter in bad_end:
+                        lobby.lastLetter = random.choice(string.ascii_lowercase)
+                    await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
                 
             elif (json.loads(data)["type"] == MessageType.COMM.value):
                 if (json.loads(data)["message"] ==""):
@@ -175,23 +181,27 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                     # Check if the word is valid
                     word = json.loads(data)["message"]
                     print("word: ",word)
-                    d = enchant.Dict("en_US")
-                    if not d.check(word):
+                    
+                    if not is_valid_word(word, lobby.firstLetter, lobby.lastLetter):
                         continue
                     lobby.round += 1
-                    if lobby.round > 5:
+                    if lobby.round > 6:
                         lobby.status = LobbyStatus.COMPLETED
+                        lobby.round = 1
                         await lobby.broadcast("Game completed!", None, MessageType.INFO)
-                        lobby.round = 0
+                        
                     else:
+                        
                         await lobby.broadcast(f"{display_name}", None, MessageType.INFO)
-                        firstLetter = random.choice(string.ascii_lowercase)
-                        while firstLetter in bad_start:
-                            firstLetter = random.choice(string.ascii_lowercase)
-                        lastLetter = random.choice(string.ascii_lowercase)
-                        while lastLetter in bad_end:
-                            lastLetter = random.choice(string.ascii_lowercase)
-                        await lobby.broadcast(firstLetter+lastLetter, None, MessageType.INFO)
+                        lobby.firstLetter = random.choice(string.ascii_lowercase)
+                        while lobby.firstLetter in bad_start:
+                            lobby.firstLetter = random.choice(string.ascii_lowercase)
+                        lobby.lastLetter = random.choice(string.ascii_lowercase)
+                        while lobby.lastLetter in bad_end:
+                            lobby.lastLetter = random.choice(string.ascii_lowercase)
+                        await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
+                        
+                    
     except WebSocketDisconnect:
         lobby.disconnect(display_name)
 

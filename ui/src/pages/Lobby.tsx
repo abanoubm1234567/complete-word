@@ -6,6 +6,7 @@ function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
   const [lobbyMessages, setLobbyMessages] = useState<string[]>([]);
   const [gameCanStart, setGameCanStart] = useState<boolean>(false);
+  const [gameCanStartAgain, setGameCanStartAgain] = useState<boolean>(false);
   const [lobbyStatus, setLobbyStatus] = useState<string>(
     "Waiting for players..."
   );
@@ -85,6 +86,7 @@ function Lobby() {
         case 1: // INFO
           switch (message.status) {
             case "ready":
+              setScore(0);
               setGameCanStart(true);
               setLobbyStatus("Game is ready to start!");
               lobbyStatusRef.current = "ready";
@@ -112,6 +114,7 @@ function Lobby() {
               break;
             case "in_progress":
               setGameCanStart(false);
+              setGameCanStartAgain(false);
               setLobbyStatus("Game is in progress!");
               lobbyStatusRef.current = "in_progress";
               if (message.message.length === 2){
@@ -120,8 +123,13 @@ function Lobby() {
               }
               setRound(message.round);
               if (message.message == displayNameRef.current) {
-                setScore(score + 1);
+                setScore((prevScore) => prevScore + 1);
               }
+              break;
+            case "completed":
+              setLobbyStatus("Game completed!");
+              lobbyStatusRef.current = "completed";
+              setGameCanStartAgain(true);
               break;
             default:
               console.warn("Unknown lobby status:", message.status);
@@ -170,6 +178,14 @@ function Lobby() {
       nav("/");
     }
   }, []);
+  const chatBoxRef = useRef(null);
+
+  useEffect(() => {
+    if (chatBoxRef.current) {
+      const chatBox = chatBoxRef.current as HTMLDivElement;
+      chatBox.scrollTop = chatBox.scrollHeight; // Scroll to the bottom
+    }
+  }, [lobbyMessages]);
 
   const spinner = () => {
     return (
@@ -190,8 +206,12 @@ function Lobby() {
 
   const handleStart = () => {
     if (!socketRef.current) return;
+    setScore(0);
+    setRound(1);
     lobbyStatusRef.current = "in_progress";
     setLobbyStatus("Game is in progress!");
+    setGameCanStart(false);
+    setGameCanStartAgain(false);
     socketRef.current.send(
       JSON.stringify({
         type: 1,
@@ -235,17 +255,25 @@ function Lobby() {
             {lobbyStatus}
           </p>
         </div>
+        {gameCanStartAgain && score >=3 ? (
+          <p style={{ color: "green", fontWeight: "bold" }}>
+            Winner!</p>) : null}
+        {gameCanStartAgain && score < 3 ? (
+          <p style={{ color: "red", fontWeight: "bold"  }}>
+            Loser!</p>) : null}
         {lobbyStatusRef.current === "in_progress" ? gameView() : null}
         <div
-          className="modal-dialog-scrollable"
+          className="modal-dialog-scrollable chat-box"
           style={{
-            maxHeight: "30vh",
+            height: "30vh",
             backgroundColor: "gray",
             padding: "20px",
             borderRadius: "10px",
             width: "80%",
-            overflow: "auto",
+            overflowY: "auto",
+            
           }}
+          ref={chatBoxRef}
         >
           {lobbyMessages.map((msg, index) => (
             <p key={index}>
@@ -288,6 +316,15 @@ function Lobby() {
             onClick={handleStart}
           >
             Start
+          </button>
+        ) : null}
+        {gameCanStartAgain && displayNameRef.current === lobbyLeaderRef.current ? (
+          <button
+            style={{ marginBottom: 20, marginTop: 20 }}
+            className="btn btn-success"
+            onClick={handleStart}
+          >
+            Play Again
           </button>
         ) : null}
       </div>
