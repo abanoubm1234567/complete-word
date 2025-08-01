@@ -12,6 +12,7 @@ function Lobby() {
   const [firstLetter, setFirstLetter] = useState<string>("");
   const [lastLetter, setLastLetter] = useState<string>("");
   const [round, setRound] = useState<number>(1);
+  const [score, setScore] = useState<number>(0);
 
   const lobbyStatusRef = useRef<string>("waiting");
   const initialRenderComplete = useRef<boolean>(false);
@@ -110,8 +111,17 @@ function Lobby() {
               }, 2000);
               break;
             case "in_progress":
+              setGameCanStart(false);
               setLobbyStatus("Game is in progress!");
               lobbyStatusRef.current = "in_progress";
+              if (message.message.length === 2){
+                setFirstLetter(message.message[0]);
+                setLastLetter(message.message[1]);
+              }
+              setRound(message.round);
+              if (message.message == displayNameRef.current) {
+                setScore(score + 1);
+              }
               break;
             default:
               console.warn("Unknown lobby status:", message.status);
@@ -193,6 +203,7 @@ function Lobby() {
   const gameView = () => {
     return (
       <div>
+        <p><b>Score: {score}</b></p>
         <p>Round {round}/5</p>
         <p>First letter: {firstLetter}</p>
         <p>Last letter: {lastLetter}</p>
@@ -228,7 +239,7 @@ function Lobby() {
         <div
           className="modal-dialog-scrollable"
           style={{
-            maxHeight: "50vh",
+            maxHeight: "30vh",
             backgroundColor: "gray",
             padding: "20px",
             borderRadius: "10px",
