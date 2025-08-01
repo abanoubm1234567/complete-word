@@ -122,6 +122,9 @@ function Lobby() {
                 setLastLetter(message.message[1]);
               }
               setRound(message.round);
+              if (message.round === 1){
+                setScore(0);
+              }
               if (message.message == displayNameRef.current) {
                 setScore((prevScore) => prevScore + 1);
               }

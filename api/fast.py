@@ -122,8 +122,8 @@ async def join(lobby_key: str, display_name: str):
 
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
-    bad_start = {"x", "q", "z", "j", "v", "y"}
-    bad_end = {"q", "j", "v", "x", "z"}
+    bad_start = {"x", "q", "z", "j", "v", "y", "k"}
+    bad_end = {"q", "j", "v", "x", "z", "c"}
 
     def is_valid_word(word: str, first_letter: str, last_letter: str) -> bool:
         if(len(word)> 1 and word.isalpha() and word[0]==first_letter and word[-1]==last_letter):
@@ -185,7 +185,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                     if not is_valid_word(word, lobby.firstLetter, lobby.lastLetter):
                         continue
                     lobby.round += 1
-                    if lobby.round > 6:
+                    if lobby.round > 5:
                         lobby.status = LobbyStatus.COMPLETED
                         lobby.round = 1
                         await lobby.broadcast("Game completed!", None, MessageType.INFO)
