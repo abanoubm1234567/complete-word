@@ -92,9 +92,9 @@ jobs:
     defaults:
       run:
         working-directory: ui
-      permissions:
-        contents: read
-        id-token: write
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout code
