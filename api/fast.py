@@ -71,6 +71,7 @@ class Lobby:
             "playersToSockets": str(self.playersToSockets),
         }
 lobbies = {}
+lobbyNumTracker = 0
 '''
 # Read the lobbies from lobbies.json file
 
@@ -100,7 +101,8 @@ def read_root():
 
 @app.post("/create")
 async def create(display_name: str):
-    lobby_key = uuid.uuid4().hex
+    lobby_key = lobbyNumTracker
+    lobbyNumTracker += 1
     new_lobby = Lobby(key=lobby_key)
     lobbies[lobby_key] = new_lobby
     lobbies[lobby_key].playersToSockets[display_name] = None
