@@ -24,3 +24,5 @@ yarn-error.log*
 
 api/.venv
 api/__pycache__
+
+ui/build
