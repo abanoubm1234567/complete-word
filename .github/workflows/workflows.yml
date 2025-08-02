@@ -7,7 +7,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  SERVICE_NAME: complete-word-fastapi-service
+  SERVICE_NAME: complete-word-fastapi
   REGION: us-east4
   IMAGE_NAME: complete-word-fastapi-image
 
@@ -31,7 +31,7 @@ jobs:
             workflow:
               - '.github/workflows/**'
 
-  fastapi-deploy:
+  api:
     needs: detect-changes
     if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
@@ -64,7 +64,6 @@ jobs:
       - name: Show active gcloud account
         run: gcloud auth list
 
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -84,3 +83,33 @@ jobs:
       - name: Show deployed URL
         run: |
           echo "Cloud Run URL: ${{ steps.deploy-cloudrun.outputs.url }}"
+
+  ui:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ui == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          
+      - name: Build and push Docker image
+        run: |
+          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/react-ui
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy complete-word \
+            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/react-ui \
+            --platform managed \
+            --region us-east4 \
+            --allow-unauthenticated
