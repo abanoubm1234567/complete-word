@@ -7,7 +7,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: us-east4
+  REGION: us-east1
   FASTAPI_SERVICE: complete-word-fastapi
   FASTAPI_IMAGE_NAME: complete-word-fastapi-image
   REACT_SERVICE: complete-word-ui
