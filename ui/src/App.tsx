@@ -6,7 +6,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/complete-word" element={<Home />} />
         <Route path="/lobby" element={<Lobby />} />
       </Routes>
     </Router>

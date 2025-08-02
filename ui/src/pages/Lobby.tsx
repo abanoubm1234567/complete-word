@@ -36,11 +36,15 @@ function Lobby() {
     console.log("Creating lobby with display name:", displayName);
     displayNameRef.current = displayName;
     axios
-      .post("http://127.0.0.1:8000/create", null, {
-        params: {
-          display_name: displayName,
-        },
-      })
+      .post(
+        "https://complete-word-api-510153365158.us-east4.run.app/create",
+        null,
+        {
+          params: {
+            display_name: displayName,
+          },
+        }
+      )
       .then((response) => {
         if (response.data) {
           setNewLobbyKey(response.data);
@@ -50,7 +54,7 @@ function Lobby() {
         console.error("Error creating lobby:", error);
         setNewLobbyKey("Error creating lobby. Please try again.");
       });
-  }, []);
+  });
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
@@ -61,15 +65,20 @@ function Lobby() {
     console.log("Joining lobby with key:", lobbyKey);
     displayNameRef.current = location.state.display_name;
     setNewLobbyKey(lobbyKey);
-  });
+  }, [
+    location.state.operation,
+    location.state.lobby_key,
+    location.state.display_name,
+  ]);
 
   useEffect(() => {
     if (!newLobbyKey || !displayNameRef.current) return;
     const ws = new WebSocket(
-      `ws://localhost:8000/lobby/${newLobbyKey}?display_name=${encodeURIComponent(
+      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}?display_name=${encodeURIComponent(
         displayNameRef.current
       )}`
     );
+
     socketRef.current = ws;
 
     ws.onopen = () => {
@@ -117,15 +126,15 @@ function Lobby() {
               setGameCanStartAgain(false);
               setLobbyStatus("Game is in progress!");
               lobbyStatusRef.current = "in_progress";
-              if (message.message.length === 2){
+              if (message.message.length === 2) {
                 setFirstLetter(message.message[0]);
                 setLastLetter(message.message[1]);
               }
               setRound(message.round);
-              if (message.round === 1){
+              if (message.round === 1) {
                 setScore(0);
               }
-              if (message.message == displayNameRef.current) {
+              if (message.message === displayNameRef.current) {
                 setScore((prevScore) => prevScore + 1);
               }
               break;
@@ -154,7 +163,7 @@ function Lobby() {
           console.warn("Unknown message type:", message.type);
       }
     };
-  }, [newLobbyKey]);
+  }, [newLobbyKey, nav]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {
@@ -180,7 +189,7 @@ function Lobby() {
       setNewLobbyKey(null);
       nav("/");
     }
-  }, []);
+  }, [nav]);
   const chatBoxRef = useRef(null);
 
   useEffect(() => {
@@ -226,7 +235,9 @@ function Lobby() {
   const gameView = () => {
     return (
       <div>
-        <p><b>Score: {score}</b></p>
+        <p>
+          <b>Score: {score}</b>
+        </p>
         <p>Round {round}/5</p>
         <p>First letter: {firstLetter}</p>
         <p>Last letter: {lastLetter}</p>
@@ -258,12 +269,12 @@ function Lobby() {
             {lobbyStatus}
           </p>
         </div>
-        {gameCanStartAgain && score >=3 ? (
-          <p style={{ color: "green", fontWeight: "bold" }}>
-            Winner!</p>) : null}
+        {gameCanStartAgain && score >= 3 ? (
+          <p style={{ color: "green", fontWeight: "bold" }}>Winner!</p>
+        ) : null}
         {gameCanStartAgain && score < 3 ? (
-          <p style={{ color: "red", fontWeight: "bold"  }}>
-            Loser!</p>) : null}
+          <p style={{ color: "red", fontWeight: "bold" }}>Loser!</p>
+        ) : null}
         {lobbyStatusRef.current === "in_progress" ? gameView() : null}
         <div
           className="modal-dialog-scrollable chat-box"
@@ -274,7 +285,6 @@ function Lobby() {
             borderRadius: "10px",
             width: "80%",
             overflowY: "auto",
-            
           }}
           ref={chatBoxRef}
         >
@@ -321,7 +331,8 @@ function Lobby() {
             Start
           </button>
         ) : null}
-        {gameCanStartAgain && displayNameRef.current === lobbyLeaderRef.current ? (
+        {gameCanStartAgain &&
+        displayNameRef.current === lobbyLeaderRef.current ? (
           <button
             style={{ marginBottom: 20, marginTop: 20 }}
             className="btn btn-success"
