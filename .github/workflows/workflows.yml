@@ -1,118 +1,32 @@
-name: Deploy to Google Cloud Run
+name: Deploy React to GitHub Pages
 
 on:
   push:
-    branches:
-      - "*"
-
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: us-east1
-  FASTAPI_SERVICE: complete-word-fastapi
-  FASTAPI_IMAGE_NAME: complete-word-fastapi-image
-  REACT_SERVICE: complete-word-ui
-  REACT_IMAGE_NAME: react-ui
+    branches: ["*"]
 
 jobs:
-  detect-changes:
+  build-deploy:
     runs-on: ubuntu-latest
-    outputs:
-      api: ${{ steps.filter.outputs.api }}
-      ui: ${{ steps.filter.outputs.ui }}
-      workflow: ${{ steps.filter.outputs.workflow }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            api:
-              - 'api/**'
-            ui:
-              - 'ui/**'
-            workflow:
-              - '.github/workflows/**'
 
-  deploy-api:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: api
-    permissions:
-      contents: read
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: api/
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ env.PROJECT_ID }}
-
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-      - name: Build and push FastAPI image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./api
-          file: ./api/Dockerfile
-          push: true
-          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.FASTAPI_IMAGE_NAME }}/${{ env.FASTAPI_SERVICE }}:${{ github.sha }}
-
-      - name: Deploy FastAPI to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.FASTAPI_SERVICE }}
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.FASTAPI_IMAGE_NAME }}/${{ env.FASTAPI_SERVICE }}:${{ github.sha }}
-          region: ${{ env.REGION }}
-          flags: --allow-unauthenticated
-
-  deploy-ui:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.ui == 'true' || needs.detect-changes.outputs.workflow == 'true'
-    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ui
-    permissions:
-      contents: read
-      id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          node-version: 22
 
-      - name: Set up Google Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-        with:
-          project_id: ${{ env.PROJECT_ID }}
+      - name: Install dependencies
+        run: npm install
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
-
-      - name: Build and push React image
+      - name: Deploy to GitHub Pages
+        env:
+          CI: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gcloud builds submit --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.REACT_IMAGE_NAME }}
-
-      - name: Deploy React app to Cloud Run
-        run: |
-          gcloud run deploy ${{ env.REACT_SERVICE }} \
-            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.REACT_IMAGE_NAME }} \
-            --platform managed \
-            --region ${{ env.REGION }} \
-            --allow-unauthenticated
+          npm run deploy
