@@ -1,4 +1,4 @@
-name: FastAPI Cloud Run Deploy
+name: Deploy to Google Cloud Run
 
 on:
   push:
@@ -7,9 +7,11 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  SERVICE_NAME: complete-word-fastapi
   REGION: us-east4
-  IMAGE_NAME: complete-word-fastapi-image
+  FASTAPI_SERVICE: complete-word-fastapi
+  FASTAPI_IMAGE_NAME: complete-word-fastapi-image
+  REACT_SERVICE: complete-word-ui
+  REACT_IMAGE_NAME: react-ui
 
 jobs:
   detect-changes:
@@ -31,7 +33,7 @@ jobs:
             workflow:
               - '.github/workflows/**'
 
-  api:
+  deploy-api:
     needs: detect-changes
     if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
@@ -45,47 +47,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 1
-          sparse-checkout: |
-            api/
+          sparse-checkout: api/
 
       - name: Set up Google Cloud
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
-
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
 
-      - name: Show active gcloud account
-        run: gcloud auth list
-
-      - name: Build and push Docker image
+      - name: Build and push FastAPI image
         uses: docker/build-push-action@v5
         with:
           context: ./api
           file: ./api/Dockerfile
           push: true
-          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          tags: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.FASTAPI_IMAGE_NAME }}/${{ env.FASTAPI_SERVICE }}:${{ github.sha }}
 
-      - name: Deploy to Cloud Run
+      - name: Deploy FastAPI to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: ${{ env.SERVICE_NAME }}
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.IMAGE_NAME }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          service: ${{ env.FASTAPI_SERVICE }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.FASTAPI_IMAGE_NAME }}/${{ env.FASTAPI_SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
           flags: --allow-unauthenticated
 
-      - name: Show deployed URL
-        run: |
-          echo "Cloud Run URL: ${{ steps.deploy-cloudrun.outputs.url }}"
-
-  ui:
+  deploy-ui:
     needs: detect-changes
     if: needs.detect-changes.outputs.ui == 'true' || needs.detect-changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
@@ -97,24 +87,23 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Google Cloud
         uses: google-github-actions/setup-gcloud@v1
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: ${{ env.PROJECT_ID }}
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           export_default_credentials: true
 
-      - name: Build and push Docker image
+      - name: Build and push React image
         run: |
-          gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/react-ui
+          gcloud builds submit --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.REACT_IMAGE_NAME }}
 
-      - name: Deploy to Cloud Run
+      - name: Deploy React app to Cloud Run
         run: |
-          gcloud run deploy complete-word \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/react-ui \
+          gcloud run deploy ${{ env.REACT_SERVICE }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.REACT_IMAGE_NAME }} \
             --platform managed \
-            --region us-east4 \
+            --region ${{ env.REGION }} \
             --allow-unauthenticated
