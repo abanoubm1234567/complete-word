@@ -6,7 +6,6 @@ import json
 import random
 import string
 import enchant
-import time
 
 app = FastAPI()
 
@@ -139,14 +138,16 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     await websocket.accept()
     display_name = websocket.query_params.get("display_name")
     if not display_name:
+        print("no fisplay name")
         await websocket.close()
         return
 
     lobby = lobbies.get(lobby_key)
-    while not lobby:
-        print("waiting for lobby")
-        time.sleep(0.5)
-        lobby = lobbies.get(lobby_key)
+    if not lobby:
+        print("no lobby")
+        await websocket.close()
+        return
+        
     
     lobby.playersToSockets[display_name] = websocket
     print(f"{display_name} connected to lobby {lobby_key}. Current players: {str(lobby.playersToSockets)}")
