@@ -144,6 +144,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
     lobby = lobbies.get(lobby_key)
     while not lobby:
+        print("waiting for lobby")
         time.sleep(0.5)
         lobby = lobbies.get(lobby_key)
     
