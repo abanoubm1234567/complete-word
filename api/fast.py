@@ -71,7 +71,7 @@ class Lobby:
             "playersToSockets": str(self.playersToSockets),
         }
 lobbies = {}
-lobbyNumTracker = 0
+
 '''
 # Read the lobbies from lobbies.json file
 
@@ -90,7 +90,7 @@ def save_on_shutdown():
         json.dump(lobbies, f, indent=2)
     print("Saved lobbies to lobbies.json")
 '''
-
+lobbyNumTracker = 0
 @app.get("/")
 def read_root():
     result = []
@@ -101,6 +101,7 @@ def read_root():
 
 @app.post("/create")
 async def create(display_name: str):
+    global lobbyNumTracker
     lobby_key = lobbyNumTracker
     lobbyNumTracker += 1
     new_lobby = Lobby(key=lobby_key)
