@@ -44,12 +44,16 @@ function HomeScreen() {
     }
     if (exitFunction) return;
     axios
-      .post("http://127.0.0.1:8000/join", null, {
-        params: {
-          lobby_key: joinLobbyKey.current,
-          display_name: displayName.current,
-        },
-      })
+      .post(
+        "https://complete-word-api-510153365158.us-east4.run.app/join",
+        null,
+        {
+          params: {
+            lobby_key: joinLobbyKey.current,
+            display_name: displayName.current,
+          },
+        }
+      )
       .then((response) => {
         if (response.data === true) {
           nav("/lobby", {

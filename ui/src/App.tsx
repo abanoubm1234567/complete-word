@@ -4,9 +4,9 @@ import Lobby from "./pages/Lobby";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/complete-word">
       <Routes>
-        <Route path="/complete-word" element={<Home />} />
+        <Route path="/-word" element={<Home />} />
         <Route path="/lobby" element={<Lobby />} />
       </Routes>
     </Router>
