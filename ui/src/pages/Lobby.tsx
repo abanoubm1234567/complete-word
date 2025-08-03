@@ -73,16 +73,20 @@ function Lobby() {
 
   useEffect(() => {
     if (!newLobbyKey || !displayNameRef.current) return;
+    let retries = 0;
+    const maxRetries = 5;
+    const retryDelay = 1000;
+
+    function connectWebSocket() {
     const ws = new WebSocket(
-      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}?display_name=${encodeURIComponent(
-        displayNameRef.current
-      )}`
+      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}?display_name=${encodeURIComponent(displayNameRef.current ?? "Unkown Username")}`
     );
 
     socketRef.current = ws;
 
     ws.onopen = () => {
       console.log("WebSocket connection established.");
+      retries = 0; // Reset retries on successful connection
     };
 
     ws.onmessage = (event) => {
@@ -163,6 +167,19 @@ function Lobby() {
           console.warn("Unknown message type:", message.type);
       }
     };
+    ws.onclose = (event) => {
+      // If closed quickly, try to reconnect
+      if (retries < maxRetries) {
+        retries++;
+        setTimeout(connectWebSocket, retryDelay);
+      } else {
+        console.error("WebSocket failed to connect after retries.");
+      }
+    };
+  }
+    connectWebSocket();
+
+  
   }, [newLobbyKey, nav]);
 
   useEffect(() => {
