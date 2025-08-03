@@ -6,7 +6,7 @@ function App() {
   return (
     <Router basename="/complete-word">
       <Routes>
-        <Route path="/-word" element={<Home />} />
+        <Route path="/" element={<Home />} />
         <Route path="/lobby" element={<Lobby />} />
       </Routes>
     </Router>
