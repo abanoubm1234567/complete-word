@@ -1,20 +1,19 @@
-# Use the latest LTS version of Node.js
-FROM node:18-alpine
- 
-# Set the working directory inside the container
-WORKDIR /app
- 
-# Copy package.json and package-lock.json
-COPY package*.json ./
- 
-# Install dependencies
+# Fetching the latest node image on alpine linux
+FROM node:alpine AS development
+
+# Declaring env
+ENV NODE_ENV development
+
+# Setting up the work directory
+WORKDIR /react-app
+
+# Installing dependencies
+COPY ./package*.json /react-app
+
 RUN npm install
- 
-# Copy the rest of your application files
+
+# Copying all the files in our project
 COPY . .
- 
-# Expose the port your app runs on
-EXPOSE 3000
- 
-# Define the command to run your app
-CMD ["npm", "start"]
+
+# Starting our application
+CMD ["npm","start"]
