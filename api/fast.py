@@ -144,10 +144,12 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
     lobby = lobbies.get(lobby_key)
     if not lobby:
-        print("no lobby")
-        await websocket.close()
-        return
-        
+        print(f"Lobby {lobby_key} does not exist.")
+        lobbies[lobby_key] = Lobby(key=lobby_key)
+        lobby = lobbies[lobby_key]
+        lobbies[lobby_key].playersToSockets[display_name] = None
+        lobbies[lobby_key].leader = display_name
+        print(f"Created lobby with key: {lobby_key}")
     
     lobby.playersToSockets[display_name] = websocket
     print(f"{display_name} connected to lobby {lobby_key}. Current players: {str(lobby.playersToSockets)}")
