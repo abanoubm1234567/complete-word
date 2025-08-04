@@ -126,5 +126,5 @@ jobs:
             --image $IMAGE \
             --service-account github-actions-deployer@${{secrets.GCP_PROJECT_ID}}.iam.gserviceaccount.com \
             --region us-east4 \
-            --allow-unauthenticated
+            --allow-unauthenticated \
             --memory=2Gi
