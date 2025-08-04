@@ -4,7 +4,7 @@ import Lobby from "./pages/Lobby";
 
 function App() {
   return (
-    <Router basename="/complete-word">
+    <Router>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/lobby" element={<Lobby />} />
