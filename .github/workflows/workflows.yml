@@ -77,6 +77,6 @@ jobs:
           IMAGE=us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/${{ env.API_IMAGE_NAME }}:latest
           gcloud run deploy $API_SERVICE_NAME \
             --image $IMAGE \
-            --service-account cloud-run-runtime-sa@${{secrets.GCP_PROJECT_ID}}.iam.gserviceaccount.com \
+            --service-account github-actions-deployer@${{secrets.GCP_PROJECT_ID}}.iam.gserviceaccount.com \
             --region us-east4 \
             --allow-unauthenticated
