@@ -1,37 +1,82 @@
-name: Deploy React to GitHub Pages
+name: UI and API
 
 on:
   push:
-    branches: ["*"]
+    branches:
+      - "*"
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  API_SERVICE_NAME: complete-word-api
+  UI_SERVICE_NAME: complete-word-ui
+  REGION: us-east4
+  API_IMAGE_NAME: complete-word-api-image
+  UI_IMAGE_NAME: complete-word-ui-image
 
 jobs:
-  build-deploy:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      ui: ${{ steps.filter.outputs.ui }}
+      workflow: ${{ steps.filter.outputs.workflow }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.head_ref }}
+          filters: |
+            api:
+              - 'api/**'
+            ui:
+              - 'ui/**'
+            workflow:
+              - '.github/workflows/**'
 
+  api:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.api == 'true' || needs.detect-changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ui
+        working-directory: api
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          fetch-depth: 1
+          sparse-checkout: |
+            api/
 
-      - name: Install dependencies
-        run: npm install
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Configure Git user
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker to use gcloud for authentication
         run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "GitHub Actions Bot"
+          gcloud auth configure-docker us-east4-docker.pkg.dev --quiet
 
-      - name: Deploy to GitHub Pages
-        env:
-          CI: true
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Build and Push Docker Image
         run: |
-          npm run deploy
+          IMAGE=us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/${{ env.API_IMAGE_NAME }}:latest
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE=us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/${{ env.API_IMAGE_NAME }}:latest
+          gcloud run deploy $API_SERVICE_NAME \
+            --image $IMAGE \
+            --service-account github-actions-deployer@${{secrets.GCP_PROJECT_ID}}.iam.gserviceaccount.com \
+            --region us-east4 \
+            --allow-unauthenticated
