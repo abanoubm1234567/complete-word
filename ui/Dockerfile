@@ -10,7 +10,7 @@ WORKDIR /react-app
 # Installing dependencies
 COPY ./package*.json /react-app
 
-RUN npm install
+RUN npm ci
 
 # Copying all the files in our project
 COPY . .
