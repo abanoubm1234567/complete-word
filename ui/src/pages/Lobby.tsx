@@ -25,6 +25,8 @@ function Lobby() {
 
   const nav = useNavigate();
 
+  const apiKey = process.env.COMPLETE_WORD_API_KEY;
+
   //Create a lobby if the user comes in with the "create" operation
   //then send a request to the backend to create a lobby
   //and store the lobby key in the state
@@ -45,6 +47,9 @@ function Lobby() {
           params: {
             display_name: displayName,
           },
+          headers: {
+            "x-api-key": apiKey || "",
+          }
         }
       )
       .then((response) => {
@@ -86,9 +91,9 @@ function Lobby() {
     }
 
     const ws = new WebSocket(
-      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}?display_name=${encodeURIComponent(
-        displayNameRef.current
-      )}`
+      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
+        `?display_name=${encodeURIComponent(displayNameRef.current)}` +
+        `&api_key=${encodeURIComponent(apiKey || "")}`
     );
 
     socketRef.current = ws;

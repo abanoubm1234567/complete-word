@@ -52,6 +52,9 @@ function HomeScreen() {
             lobby_key: joinLobbyKey.current,
             display_name: displayName.current,
           },
+          headers: {
+            "x-api-key": process.env.COMPLETE_WORD_API_KEY || "",
+          },
         }
       )
       .then((response) => {

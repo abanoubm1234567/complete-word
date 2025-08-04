@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from enum import Enum, IntEnum
 import json
@@ -11,11 +11,24 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://complete-word-ui-510153365158.us-east4.run.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
+
+ALLOWED_WS_ORIGINS = {
+    "https://complete-word-ui-510153365158.us-east4.run.app",
+    "http://localhost:3000",
+}
+
+import os
+
+API_KEY = os.getenv("COMPLETE_WORD_API_KEY")
+
+if not API_KEY:
+    raise RuntimeError("API_KEY not set in environment")
+
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
@@ -90,6 +103,17 @@ def save_on_shutdown():
         json.dump(lobbies, f, indent=2)
     print("Saved lobbies to lobbies.json")
 '''
+
+@app.middleware("http")
+async def verify_api_key(request: Request, call_next):
+    key = request.headers.get("X-API-Key")
+    if key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    # Continue processing the request
+    response = await call_next(request)
+    return response
+
 lobbyNumTracker = 0
 @app.get("/")
 def read_root():
@@ -125,6 +149,13 @@ async def join(lobby_key: str, display_name: str):
 
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
+
+    api_key = websocket.headers.get("x-api-key")
+    origin = websocket.headers.get("origin")
+    if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
+        await websocket.close(code=1008)  # Policy Violation
+        return
+
     bad_start = {"x", "q", "z", "j", "v", "y", "k"}
     bad_end = {"q", "j", "v", "x", "z", "c", "u"}
 
@@ -138,7 +169,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     await websocket.accept()
     display_name = websocket.query_params.get("display_name")
     if not display_name:
-        print("no fisplay name")
+        print("no display name")
         await websocket.close()
         return
 

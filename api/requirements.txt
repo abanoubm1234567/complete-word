@@ -2,3 +2,4 @@ uvicorn[standard]
 typing
 fastapi[standard]
 pyenchant
+requests
