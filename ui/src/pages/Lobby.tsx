@@ -29,12 +29,14 @@ function Lobby() {
   //then send a request to the backend to create a lobby
   //and store the lobby key in the state
   useEffect(() => {
-    if (initialRenderComplete.current || location.state?.operation !== "create")
-      return;
-    initialRenderComplete.current = true;
+    const shouldCreateLobby = location.state?.operation === "create";
     const displayName = location.state?.display_name;
+
+    if (!shouldCreateLobby || !displayName) return;
+
     console.log("Creating lobby with display name:", displayName);
     displayNameRef.current = displayName;
+
     axios
       .post(
         "https://complete-word-api-510153365158.us-east4.run.app/create",
@@ -46,15 +48,21 @@ function Lobby() {
         }
       )
       .then((response) => {
-        if (response.data) {
-          setNewLobbyKey(response.data);
+        if (typeof response.data === "number") {
+          console.log("Lobby created with key:", response.data);
+          setTimeout(() => {
+            setNewLobbyKey(response.data); // Delay to ensure backend state is ready
+          }, 500);
+        } else {
+          console.error("Unexpected lobby key:", response.data);
+          setNewLobbyKey(null);
         }
       })
       .catch((error) => {
         console.error("Error creating lobby:", error);
-        setNewLobbyKey("Error creating lobby. Please try again.");
+        setNewLobbyKey(null);
       });
-  });
+  }, [location.state?.operation, location.state?.display_name]);
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
@@ -72,11 +80,14 @@ function Lobby() {
   ]);
 
   useEffect(() => {
-    if (!newLobbyKey || !displayNameRef.current) return;
+    if (!newLobbyKey || !displayNameRef.current) {
+      console.warn("Missing lobby key or display name");
+      return;
+    }
 
     const ws = new WebSocket(
       `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}?display_name=${encodeURIComponent(
-        displayNameRef.current ?? "Unkown Username"
+        displayNameRef.current
       )}`
     );
 
@@ -86,85 +97,94 @@ function Lobby() {
       console.log("WebSocket connection established.");
     };
 
+    ws.onerror = (err) => {
+      console.error("WebSocket error:", err);
+    };
+
+    ws.onclose = (event) => {
+      console.log("WebSocket closed:", event.reason || "No reason provided");
+    };
+
     ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      if (!lobbyLeaderRef.current) {
-        lobbyLeaderRef.current = message.leader;
-      }
-      console.log("Message from server:", message);
-      switch (message.type) {
-        case 1: // INFO
-          switch (message.status) {
-            case "ready":
-              setScore(0);
-              setGameCanStart(true);
-              setLobbyStatus("Game is ready to start!");
-              lobbyStatusRef.current = "ready";
-              break;
-            case "waiting":
-              setGameCanStart(false);
-              setLobbyStatus("Waiting for players...");
-              lobbyStatusRef.current = "waiting";
-              break;
-            case "error":
-              // State changes (should be done synchronously)
-              setGameCanStart(false);
-              setLobbyStatus("Error: Leader disconnected. Lobby deleted.");
-              lobbyStatusRef.current = "error";
-              setNewLobbyKey(null);
+      try {
+        const message = JSON.parse(event.data);
+        const { type, status } = message;
 
-              // Close socket (clean up WebSocket connection)
-              socketRef.current?.close();
+        if (!lobbyLeaderRef.current) {
+          lobbyLeaderRef.current = message.leader;
+        }
 
-              // Timeout before navigating away
-              setTimeout(() => {
-                localStorage.removeItem("wasInLobby");
-                nav("/"); // Navigate after 2 seconds
-              }, 2000);
-              break;
-            case "in_progress":
-              setGameCanStart(false);
-              setGameCanStartAgain(false);
-              setLobbyStatus("Game is in progress!");
-              lobbyStatusRef.current = "in_progress";
-              if (message.message.length === 2) {
-                setFirstLetter(message.message[0]);
-                setLastLetter(message.message[1]);
-              }
-              setRound(message.round);
-              if (message.round === 1) {
+        switch (type) {
+          case 1: // INFO
+            switch (status) {
+              case "ready":
                 setScore(0);
-              }
-              if (message.message === displayNameRef.current) {
-                setScore((prevScore) => prevScore + 1);
-              }
-              break;
-            case "completed":
-              setLobbyStatus("Game completed!");
-              lobbyStatusRef.current = "completed";
-              setGameCanStartAgain(true);
-              break;
-            default:
-              console.warn("Unknown lobby status:", message.status);
-          }
-          break;
-        case 2: // COMM
-          setLobbyMessages((lobbyMessages) => [
-            ...lobbyMessages,
-            message.player + ": " + message.message,
-          ]);
-          break;
-        case 3: // BROADCAST
-          setLobbyMessages((lobbyMessages) => [
-            ...lobbyMessages,
-            "LOBBY: " + message.message,
-          ]);
-          break;
-        default:
-          console.warn("Unknown message type:", message.type);
+                setGameCanStart(true);
+                setLobbyStatus("Game is ready to start!");
+                lobbyStatusRef.current = "ready";
+                break;
+              case "waiting":
+                setGameCanStart(false);
+                setLobbyStatus("Waiting for players...");
+                lobbyStatusRef.current = "waiting";
+                break;
+              case "error":
+                setGameCanStart(false);
+                setLobbyStatus("Error: Leader disconnected. Lobby deleted.");
+                lobbyStatusRef.current = "error";
+                setNewLobbyKey(null);
+                socketRef.current?.close();
+                setTimeout(() => {
+                  localStorage.removeItem("wasInLobby");
+                  nav("/");
+                }, 2000);
+                break;
+              case "in_progress":
+                setGameCanStart(false);
+                setGameCanStartAgain(false);
+                setLobbyStatus("Game is in progress!");
+                lobbyStatusRef.current = "in_progress";
+                if (message.message.length === 2) {
+                  setFirstLetter(message.message[0]);
+                  setLastLetter(message.message[1]);
+                }
+                setRound(message.round);
+                if (message.round === 1) setScore(0);
+                if (message.message === displayNameRef.current) {
+                  setScore((prev) => prev + 1);
+                }
+                break;
+              case "completed":
+                setLobbyStatus("Game completed!");
+                lobbyStatusRef.current = "completed";
+                setGameCanStartAgain(true);
+                break;
+              default:
+                console.warn("Unknown lobby status:", status);
+            }
+            break;
+          case 2: // COMM
+            setLobbyMessages((prev) => [
+              ...prev,
+              `${message.player}: ${message.message}`,
+            ]);
+            break;
+          case 3: // BROADCAST
+            setLobbyMessages((prev) => [...prev, `LOBBY: ${message.message}`]);
+            break;
+          default:
+            console.warn("Unknown message type:", type);
+        }
+      } catch (err) {
+        console.error("Failed to parse WebSocket message", err);
       }
     };
-  }, [nav]);
+
+    return () => {
+      ws.close();
+      console.log("WebSocket connection closed on cleanup.");
+    };
+  }, [newLobbyKey, nav]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {

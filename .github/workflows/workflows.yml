@@ -127,4 +127,4 @@ jobs:
             --service-account github-actions-deployer@${{secrets.GCP_PROJECT_ID}}.iam.gserviceaccount.com \
             --region us-east4 \
             --allow-unauthenticated
-            --memory 1GiB
+            --memory=2Gi
