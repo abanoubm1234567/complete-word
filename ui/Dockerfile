@@ -1,15 +1,13 @@
-# Use Node to build the React app
-FROM node:22 as build
-
+# Build Stage
+FROM node:18-alpine AS build
 WORKDIR /app
-COPY . .
+COPY package*.json ./
 RUN npm install
+COPY . .
 RUN npm run build
-
-# Use nginx to serve the built React app
-FROM nginx:stable-alpine
+ 
+# Production Stage
+FROM nginx:stable-alpine AS production
 COPY --from=build /app/build /usr/share/nginx/html
-COPY --from=build /app/nginx.conf /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
