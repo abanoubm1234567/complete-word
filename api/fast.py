@@ -126,10 +126,10 @@ async def join(lobby_key: str, display_name: str):
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     bad_start = {"x", "q", "z", "j", "v", "y", "k"}
-    bad_end = {"q", "j", "v", "x", "z", "c"}
+    bad_end = {"q", "j", "v", "x", "z", "c", "u"}
 
     def is_valid_word(word: str, first_letter: str, last_letter: str) -> bool:
-        if(len(word)> 1 and word.isalpha() and word[0]==first_letter and word[-1]==last_letter):
+        if(len(word)> 1 and word.isalpha() and word[0].lower()==first_letter and word[-1].lower()==last_letter):
             d = enchant.Dict("en_US")
             return d.check(word)
         print('inavlid word')
