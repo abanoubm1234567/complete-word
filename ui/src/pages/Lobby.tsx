@@ -3,7 +3,6 @@ import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 
 function Lobby() {
-
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
   const [lobbyMessages, setLobbyMessages] = useState<string[]>([]);
   const [gameCanStart, setGameCanStart] = useState<boolean>(false);
@@ -50,7 +49,7 @@ function Lobby() {
           },
           headers: {
             "X-API-Key": apiKey || "",
-          }
+          },
         }
       )
       .then((response) => {
@@ -72,7 +71,11 @@ function Lobby() {
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
-    if (!initialRenderComplete.current || location.state?.operation !== "join" || !apiKey)
+    if (
+      !initialRenderComplete.current ||
+      location.state?.operation !== "join" ||
+      !apiKey
+    )
       return;
     initialRenderComplete.current = true;
     const lobbyKey = location.state.lobby_key;
@@ -83,7 +86,7 @@ function Lobby() {
     location.state.operation,
     location.state.lobby_key,
     location.state.display_name,
-    apiKey
+    apiKey,
   ]);
 
   useEffect(() => {
@@ -93,8 +96,9 @@ function Lobby() {
     }
     const ws = new WebSocket(
       `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
-        `?display_name=${encodeURIComponent(displayNameRef.current)}` +
-        `&X-API-Key=${encodeURIComponent(apiKey || "")}`
+        `?display_name=${encodeURIComponent(
+          displayNameRef.current
+        )}&X-API-Key=${encodeURIComponent(apiKey || "")}`
     );
 
     socketRef.current = ws;
