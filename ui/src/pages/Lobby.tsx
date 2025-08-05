@@ -3,6 +3,7 @@ import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 
 function Lobby() {
+
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
   const [lobbyMessages, setLobbyMessages] = useState<string[]>([]);
   const [gameCanStart, setGameCanStart] = useState<boolean>(false);
@@ -25,7 +26,7 @@ function Lobby() {
 
   const nav = useNavigate();
 
-  const apiKey = process.env.COMPLETE_WORD_API_KEY;
+  const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY;
 
   //Create a lobby if the user comes in with the "create" operation
   //then send a request to the backend to create a lobby
@@ -67,11 +68,11 @@ function Lobby() {
         console.error("Error creating lobby:", error);
         setNewLobbyKey(null);
       });
-  }, [location.state?.operation, location.state?.display_name]);
+  }, [location.state?.operation, location.state?.display_name, apiKey]);
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
-    if (initialRenderComplete.current || location.state?.operation !== "join")
+    if (!initialRenderComplete.current || location.state?.operation !== "join" || !apiKey)
       return;
     initialRenderComplete.current = true;
     const lobbyKey = location.state.lobby_key;
@@ -82,14 +83,15 @@ function Lobby() {
     location.state.operation,
     location.state.lobby_key,
     location.state.display_name,
+    apiKey
   ]);
 
   useEffect(() => {
-    if (!newLobbyKey || !displayNameRef.current) {
-      console.warn("Missing lobby key or display name");
+    if (!newLobbyKey || !displayNameRef.current || !apiKey) {
+      console.warn("Missing lobby key or display name or API key");
       return;
     }
-
+    console.log("api key: ", apiKey);
     const ws = new WebSocket(
       `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}` +
@@ -189,7 +191,7 @@ function Lobby() {
       ws.close();
       console.log("WebSocket connection closed on cleanup.");
     };
-  }, [newLobbyKey, nav]);
+  }, [newLobbyKey, nav, apiKey]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {

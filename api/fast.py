@@ -6,6 +6,7 @@ import json
 import random
 import string
 import enchant
+import os
 
 app = FastAPI()
 
@@ -23,13 +24,10 @@ ALLOWED_WS_ORIGINS = {
     "http://localhost:3000",
 }
 
-import os
-
-API_KEY = os.getenv("COMPLETE_WORD_API_KEY")
+API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
 
 if not API_KEY:
     raise RuntimeError("API_KEY not set in environment")
-
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
