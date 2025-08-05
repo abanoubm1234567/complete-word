@@ -150,7 +150,7 @@ async def join(lobby_key: str, display_name: str):
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
-    api_key = websocket.headers.get("x-api-key")
+    api_key = websocket.headers.get("X-API-Key")
     origin = websocket.headers.get("origin")
     if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
         await websocket.close(code=1008)  # Policy Violation

@@ -48,7 +48,7 @@ function Lobby() {
             display_name: displayName,
           },
           headers: {
-            "x-api-key": apiKey || "",
+            "X-API-Key": apiKey || "",
           }
         }
       )
@@ -93,7 +93,7 @@ function Lobby() {
     const ws = new WebSocket(
       `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}` +
-        `&api_key=${encodeURIComponent(apiKey || "")}`
+        `&X-API-Key=${encodeURIComponent(apiKey || "")}`
     );
 
     socketRef.current = ws;

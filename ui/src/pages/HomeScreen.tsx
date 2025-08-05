@@ -53,7 +53,7 @@ function HomeScreen() {
             display_name: displayName.current,
           },
           headers: {
-            "x-api-key": process.env.COMPLETE_WORD_API_KEY || "",
+            "X-API-Key": process.env.COMPLETE_WORD_API_KEY || "",
           },
         }
       )
