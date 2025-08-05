@@ -91,7 +91,6 @@ function Lobby() {
       console.warn("Missing lobby key or display name or API key");
       return;
     }
-    console.log("api key: ", apiKey);
     const ws = new WebSocket(
       `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}` +
