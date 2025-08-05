@@ -15,6 +15,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
+    
 )
 
 ALLOWED_WS_ORIGINS = {
@@ -106,11 +107,11 @@ def save_on_shutdown():
 
 @app.middleware("http")
 async def verify_api_key(request: Request, call_next):
-    key = request.headers.get("X-API-Key")
-    if key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    # Continue processing the request
+    if request.method != "OPTIONS":  # Skip preflight
+        key = request.headers.get("X-API-Key")
+        if key != API_KEY:
+            raise HTTPException(status_code=403, detail="Forbidden")
+    
     response = await call_next(request)
     return response
 
