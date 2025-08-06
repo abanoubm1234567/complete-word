@@ -141,9 +141,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
     api_key = websocket.headers.get("X-API-Key")
     origin = websocket.headers.get("origin")
-    if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
-        await websocket.close(code=1008)  # Policy Violation
-        return
+    #if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
+    #    await websocket.close(code=1008)  # Policy Violation
+    #    return
 
     bad_start = {"x", "q", "z", "j", "v", "y", "k"}
     bad_end = {"q", "j", "v", "x", "z", "c", "u"}
