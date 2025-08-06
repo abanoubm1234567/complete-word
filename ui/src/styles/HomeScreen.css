@@ -1,33 +1,40 @@
 .HomeScreen {
-  text-align: center;
-  flex-direction: column;
+  background: linear-gradient(135deg, #4f8cff 0%, #38e6c5 100%);
+  min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-evenly;
-  height: 50vh;
+  justify-content: center;
 }
 
-.title{
-  font-size: 72px;
-  margin-top: 20px;
-  font-weight: bolder;
+.input-group {
+  margin-bottom: 1.5rem;
 }
 
-.button{
-  padding: 20px;
+.btn-success, .btn-primary {
+  width: 200px;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(79, 140, 255, 0.15);
+  transition: background 0.2s, transform 0.1s;
 }
 
-.lobbyButton:hover {
-  background: linear-gradient(90deg, #38e6c5 0%, #4f8cff 100%);
+.btn-success:hover, .btn-primary:hover {
   transform: translateY(-2px) scale(1.03);
+  opacity: 0.9;
 }
 
-.lobbyKeyInput {
-  width: 50vw;
-  padding: 10px;
-  margin-bottom: 20px;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  height: 5vh;
-  font-size: larger;
+.title {
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 2rem;
+  text-shadow: 2px 2px 8px #00000033;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  60% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }

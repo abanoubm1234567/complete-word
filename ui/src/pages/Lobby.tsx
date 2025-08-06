@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
+import "../styles/Lobby.css";
 
 function Lobby() {
   const [newLobbyKey, setNewLobbyKey] = useState<string | null>(null);
@@ -14,6 +15,7 @@ function Lobby() {
   const [lastLetter, setLastLetter] = useState<string>("");
   const [round, setRound] = useState<number>(1);
   const [score, setScore] = useState<number>(0);
+  const [roundComplete, setRoundComplete] = useState<boolean>(false);
 
   const lobbyStatusRef = useRef<string>("waiting");
   const initialRenderComplete = useRef<boolean>(false);
@@ -72,14 +74,17 @@ function Lobby() {
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
     if (
-      !initialRenderComplete.current ||
+      initialRenderComplete.current ||
       location.state?.operation !== "join" ||
-      !apiKey
-    )
+      !apiKey ||
+      !location.state?.lobby_key ||
+      !location.state?.display_name
+    ) {
       return;
+    }
+
     initialRenderComplete.current = true;
     const lobbyKey = location.state.lobby_key;
-    console.log("Joining lobby with key:", lobbyKey);
     displayNameRef.current = location.state.display_name;
     setNewLobbyKey(lobbyKey);
   }, [
@@ -90,8 +95,7 @@ function Lobby() {
   ]);
 
   useEffect(() => {
-    if (!newLobbyKey || !displayNameRef.current || !apiKey) {
-      console.warn("Missing lobby key or display name or API key");
+    if (!newLobbyKey || !displayNameRef.current) {
       return;
     }
     const ws = new WebSocket(
@@ -155,11 +159,16 @@ function Lobby() {
                 setLobbyStatus("Game is in progress!");
                 lobbyStatusRef.current = "in_progress";
                 if (message.message.length === 2) {
+                  if (message.round !== 1) {
+                    setRoundComplete(true);
+                    setTimeout(() => setRoundComplete(false), 2000);
+                  }
                   setFirstLetter(message.message[0]);
                   setLastLetter(message.message[1]);
                 }
                 setRound(message.round);
                 if (message.round === 1) setScore(0);
+
                 if (message.message === displayNameRef.current) {
                   setScore((prev) => prev + 1);
                 }
@@ -194,7 +203,7 @@ function Lobby() {
       ws.close();
       console.log("WebSocket connection closed on cleanup.");
     };
-  }, [newLobbyKey, nav, apiKey]);
+  }, [newLobbyKey, nav, apiKey, displayNameRef]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {
@@ -241,7 +250,23 @@ function Lobby() {
           alignItems: "center",
         }}
       >
-        <p className="text-center">Creating Lobby...</p>
+        <p className="text-center">Doing cool stuff...</p>
+        <div className="spinner-border" role="status"></div>
+      </div>
+    );
+  };
+
+  const roundSpinner = () => {
+    return (
+      <div
+        className="d-flex justify-content-center"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <p className="text-center">Starting next round...</p>
         <div className="spinner-border" role="status"></div>
       </div>
     );
@@ -263,18 +288,50 @@ function Lobby() {
     );
   };
 
-  const gameView = () => {
-    return (
-      <div>
-        <p>
-          <b>Score: {score}</b>
-        </p>
-        <p>Round {round}/5</p>
-        <p>First letter: {firstLetter}</p>
-        <p>Last letter: {lastLetter}</p>
+  const gameView = () => (
+    <div style={{ marginBottom: 20 }}>
+      <div
+        style={{
+          fontSize: "1.5rem",
+          fontWeight: "bold",
+          color: "#38e6c5",
+          marginBottom: 10,
+        }}
+      >
+        Score: {score}
       </div>
-    );
-  };
+      <p>Round {round}/5</p>
+      <p>
+        <span style={{ fontWeight: "bold" }}>First letter:</span> {firstLetter}
+      </p>
+      <p>
+        <span style={{ fontWeight: "bold" }}>Last letter:</span> {lastLetter}
+      </p>
+      {roundComplete && (
+        <div
+          style={{
+            background: "rgba(79, 140, 255, 0.12)",
+            color: "#2d3a4a",
+            padding: "8px 24px",
+            borderRadius: "8px",
+            fontWeight: "500",
+            fontSize: "1.1rem",
+            margin: "15px 0",
+            boxShadow: "none",
+            border: "1px solid #b3d1ff",
+            textAlign: "center",
+            letterSpacing: "0.5px",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        >
+          <span role="status" aria-live="polite">
+            Next Round
+          </span>
+        </div>
+      )}
+    </div>
+  );
 
   const lobbyView = () => {
     return (
@@ -306,7 +363,10 @@ function Lobby() {
         {gameCanStartAgain && score < 3 ? (
           <p style={{ color: "red", fontWeight: "bold" }}>Loser!</p>
         ) : null}
-        {lobbyStatusRef.current === "in_progress" ? gameView() : null}
+        {lobbyStatusRef.current === "in_progress" && !roundComplete
+          ? gameView()
+          : null}
+        {roundComplete ? roundSpinner() : null}
         <div
           className="modal-dialog-scrollable chat-box"
           style={{

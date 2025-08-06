@@ -59,6 +59,7 @@ function HomeScreen() {
       )
       .then((response) => {
         if (response.data === true) {
+          //console.log("joinLobbyKey.current:", joinLobbyKey.current); // Returns correct value
           nav("/lobby", {
             state: {
               operation: "join",
