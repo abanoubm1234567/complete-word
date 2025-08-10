@@ -16,18 +16,17 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
-    
+
 )
 
 ALLOWED_WS_ORIGINS = {
-    "https://complete-word-ui-510153365158.us-east4.run.app",
-    "http://localhost:3000",
+    "*",
 }
 
-API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
+#API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
 
-if not API_KEY:
-    raise RuntimeError("API_KEY not set in environment")
+#if not API_KEY:
+#    raise RuntimeError("API_KEY not set in environment")
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
@@ -37,12 +36,13 @@ class LobbyStatus(str, Enum):
     ERROR = "error"
 
 class MessageType(IntEnum):
-    INFO =1, 
-    COMM = 2, 
-    BROADCAST = 3
+    INFO =1,
+    COMM = 2,
+    BROADCAST = 3,
+    SCORES = 4
 
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None):
+    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None):
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
@@ -50,6 +50,7 @@ class Lobby:
         self.round = round
         self.firstLetter = firstLetter
         self.lastLetter = lastLetter
+        self.playersToScores = playersToScores or {}
 
     async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
         for _, ws in self.playersToSockets.items():
@@ -63,13 +64,15 @@ class Lobby:
                         "leader": self.leader,
                         "round": self.round,
                         "firstLetter": self.firstLetter,
-                        "lastLetter": self.lastLetter
+                        "lastLetter": self.lastLetter,
+                        "scores": self.playersToScores
                     })
                 except Exception as e:
                     print(f"Error sending: {e}")
 
     def disconnect(self, display_name: str):
         self.playersToSockets.pop(display_name, None)
+        self.playersToScores.pop(display_name, None)
 
     def is_empty(self) -> bool:
         for _, ws in self.playersToSockets.items():
@@ -81,6 +84,9 @@ class Lobby:
         return {
             "key": self.key,
             "playersToSockets": str(self.playersToSockets),
+            "playersToScores": self.playersToScores,
+            "status": self.status,
+            "leader": self.leader,
         }
 lobbies = {}
 
@@ -120,6 +126,7 @@ async def create(display_name: str):
     new_lobby = Lobby(key=lobby_key)
     lobbies[lobby_key] = new_lobby
     lobbies[lobby_key].playersToSockets[display_name] = None
+    lobbies[lobby_key].playersToScores[display_name] = 0
     lobbies[lobby_key].leader = display_name
     print(f"Created lobby with key: {lobby_key}")
     return lobby_key
@@ -133,6 +140,7 @@ async def join(lobby_key: str, display_name: str):
         lobby.playersToSockets[display_name+"2"] = None
     else:
         lobby.playersToSockets[display_name] = None
+    lobby.playersToScores[display_name] = 0
     print(f"{display_name} joined lobby {lobby_key}. Current players: {str(lobby.playersToSockets)}")
     return True
 
@@ -146,7 +154,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     #    return
 
     bad_start = {"x", "q", "z", "j", "v", "y", "k"}
-    bad_end = {"q", "j", "v", "x", "z", "c", "u"}
+    bad_end = {"q", "j", "v", "x", "z", "c", "u", "i"}
 
     def is_valid_word(word: str, first_letter: str, last_letter: str) -> bool:
         if(len(word)> 1 and word.isalpha() and word[0].lower()==first_letter and word[-1].lower()==last_letter):
@@ -168,9 +176,10 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
         lobbies[lobby_key] = Lobby(key=lobby_key)
         lobby = lobbies[lobby_key]
         lobbies[lobby_key].playersToSockets[display_name] = None
+        lobbies[lobby_key].playersToScores[display_name] = 0
         lobbies[lobby_key].leader = display_name
         print(f"Created lobby with key: {lobby_key}")
-    
+
     lobby.playersToSockets[display_name] = websocket
     print(f"{display_name} connected to lobby {lobby_key}. Current players: {str(lobby.playersToSockets)}")
     await lobby.broadcast(f"{display_name} has joined.", None, MessageType.BROADCAST)
@@ -181,6 +190,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     else:
         lobby.status = LobbyStatus.READY
         await lobby.broadcast("Game is ready to start!", None, MessageType.INFO)
+        await lobby.broadcast("", None, MessageType.SCORES)
 
     try:
         while True:
@@ -190,6 +200,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
             if (json.loads(data)["type"] == MessageType.INFO.value and json.loads(data)["message"] == "startGame"):
                 if lobby.status == LobbyStatus.READY or lobby.status == LobbyStatus.COMPLETED:
+                    for player in list(lobby.playersToScores.keys()):
+                        lobby.playersToScores[player] = 0
+                    await lobby.broadcast("", None, MessageType.SCORES)
                     lobby.status = LobbyStatus.IN_PROGRESS
                     await lobby.broadcast("Game is starting!", None, MessageType.INFO)
                     lobby.firstLetter = random.choice(string.ascii_lowercase)
@@ -199,7 +212,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                     while lobby.lastLetter in bad_end:
                         lobby.lastLetter = random.choice(string.ascii_lowercase)
                     await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
-                
+
             elif (json.loads(data)["type"] == MessageType.COMM.value):
                 if (json.loads(data)["message"] ==""):
                     continue
@@ -208,27 +221,30 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                     # Check if the word is valid
                     word = json.loads(data)["message"]
                     print("word: ",word)
-                    
+
                     if not is_valid_word(word, lobby.firstLetter, lobby.lastLetter):
                         continue
                     lobby.round += 1
-                    if lobby.round > 5:
+                
+                    await lobby.broadcast(f"{display_name}", None, MessageType.INFO)
+                    lobby.playersToScores[display_name] += 1
+                    await lobby.broadcast("", None, MessageType.SCORES)
+                    lobby.firstLetter = random.choice(string.ascii_lowercase)
+                    while lobby.firstLetter in bad_start:
+                        lobby.firstLetter = random.choice(string.ascii_lowercase)
+                    lobby.lastLetter = random.choice(string.ascii_lowercase)
+                    while lobby.lastLetter in bad_end:
+                        lobby.lastLetter = random.choice(string.ascii_lowercase)
+                    await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
+
+                    if lobby.round > 7:
                         lobby.status = LobbyStatus.COMPLETED
                         lobby.round = 1
                         await lobby.broadcast("Game completed!", None, MessageType.INFO)
-                        
+
                     else:
-                        
-                        await lobby.broadcast(f"{display_name}", None, MessageType.INFO)
-                        lobby.firstLetter = random.choice(string.ascii_lowercase)
-                        while lobby.firstLetter in bad_start:
-                            lobby.firstLetter = random.choice(string.ascii_lowercase)
-                        lobby.lastLetter = random.choice(string.ascii_lowercase)
-                        while lobby.lastLetter in bad_end:
-                            lobby.lastLetter = random.choice(string.ascii_lowercase)
-                        await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
-                        
-                    
+                        continue
+
     except WebSocketDisconnect:
         lobby.disconnect(display_name)
 
@@ -236,8 +252,10 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
         to_remove = [player for player, ws in lobby.playersToSockets.items() if ws is None]
         for player in to_remove:
             del lobby.playersToSockets[player]
+            del lobby.playersToScores[player]
 
         await lobby.broadcast(f"{display_name} has disconnected.", None, MessageType.BROADCAST)
+        await lobby.broadcast("", None, MessageType.SCORES)
 
         if lobby.leader not in lobby.playersToSockets:
             lobby.status = LobbyStatus.ERROR

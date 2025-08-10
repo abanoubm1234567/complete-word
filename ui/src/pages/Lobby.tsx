@@ -16,6 +16,7 @@ function Lobby() {
   const [round, setRound] = useState<number>(1);
   const [score, setScore] = useState<number>(0);
   const [roundComplete, setRoundComplete] = useState<boolean>(false);
+  const [playerScores, setPlayerScores] = useState<Record<string, number>>({});
 
   const lobbyStatusRef = useRef<string>("waiting");
   const initialRenderComplete = useRef<boolean>(false);
@@ -161,7 +162,7 @@ function Lobby() {
                 if (message.message.length === 2) {
                   if (message.round !== 1) {
                     setRoundComplete(true);
-                    setTimeout(() => setRoundComplete(false), 2000);
+                    setTimeout(() => setRoundComplete(false), 1000);
                   }
                   setFirstLetter(message.message[0]);
                   setLastLetter(message.message[1]);
@@ -190,6 +191,10 @@ function Lobby() {
             break;
           case 3: // BROADCAST
             setLobbyMessages((prev) => [...prev, `LOBBY: ${message.message}`]);
+            setPlayerScores(message.scores || {});
+            break;
+          case 4: // SCORE
+            setPlayerScores(message.scores || {});
             break;
           default:
             console.warn("Unknown message type:", type);
@@ -266,7 +271,7 @@ function Lobby() {
           alignItems: "center",
         }}
       >
-        <p className="text-center">Starting next round...</p>
+        <p className="text-center">{round === 8 ? "Concluding game..." : "Starting next round..."}</p>
         <div className="spinner-border" role="status"></div>
       </div>
     );
@@ -300,7 +305,7 @@ function Lobby() {
       >
         Score: {score}
       </div>
-      <p>Round {round}/5</p>
+      <p>Round {round}/7</p>
       <p>
         <span style={{ fontWeight: "bold" }}>First letter:</span> {firstLetter}
       </p>
@@ -336,102 +341,146 @@ function Lobby() {
   const lobbyView = () => {
     return (
       <div
-        className="d-flex justify-content-center"
         style={{
-          marginTop: "5vh",
           display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
+          flexDirection: "row",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          alignContent: "center",
         }}
       >
-        <h2>Welcome {location.state?.display_name}!</h2>
-        <p>Your Lobby Key: {newLobbyKey}</p>
-        <p>Share this key with your friend to join the lobby.</p>
-        <div style={{ display: "flex", flexDirection: "row" }}>
-          <p style={{ marginRight: 4 }}>Lobby Status: </p>
-          <p
-            style={{
-              color: lobbyStatusRef.current === "waiting" ? "red" : "green",
-            }}
-          >
-            {lobbyStatus}
-          </p>
-        </div>
-        {gameCanStartAgain && score >= 3 ? (
-          <p style={{ color: "green", fontWeight: "bold" }}>Winner!</p>
-        ) : null}
-        {gameCanStartAgain && score < 3 ? (
-          <p style={{ color: "red", fontWeight: "bold" }}>Loser!</p>
-        ) : null}
-        {lobbyStatusRef.current === "in_progress" && !roundComplete
-          ? gameView()
-          : null}
-        {roundComplete ? roundSpinner() : null}
         <div
-          className="modal-dialog-scrollable chat-box"
+          className="d-flex justify-content-center"
           style={{
-            height: "30vh",
-            backgroundColor: "gray",
-            padding: "20px",
-            borderRadius: "10px",
-            width: "80%",
-            overflowY: "auto",
+            flex: "1",
+            maxWidth: "500px",
+            marginTop: "5vh",
+            minWidth: "300px",
+            marginLeft: "10px",
+            marginRight: "10px",
+            flexDirection: "column",
+            padding: "50px",
           }}
-          ref={chatBoxRef}
         >
-          {lobbyMessages.map((msg, index) => (
-            <p key={index}>
-              <b>{msg}</b>
-            </p>
-          ))}
+          <h2>Leaderboard</h2>
+          {/*Show player scores*/}
+          <ul
+            className="list-group"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+            }}
+          >
+            {Object.entries(playerScores).map(([player, score]) => (
+              <h3>
+                {player}: {score}
+              </h3>
+            ))}
+          </ul>
         </div>
         <div
-          className="input-group mb-3"
-          style={{ width: "80%", marginTop: 5 }}
+          className="d-flex justify-content-center"
+          style={{
+            marginTop: "5vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            flex: "4",
+            marginLeft: "10px",
+            marginRight: "10px",
+            minWidth: "400px",
+          }}
         >
-          <span className="input-group-text" id="basic-addon1">
-            Message
-          </span>
-          <input
-            type="text"
-            className="form-control"
-            aria-label="Message"
-            aria-describedby="basic-addon1"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (socketRef.current) {
-                  socketRef.current.send(
-                    JSON.stringify({
-                      type: 2,
-                      message: e.currentTarget.value,
-                    })
-                  );
-                  e.currentTarget.value = "";
-                }
-              }
+          <h2>Welcome {location.state?.display_name}!</h2>
+          <p>Your Lobby Key: {newLobbyKey}</p>
+          <p>Share this key with your friend to join the lobby.</p>
+          <div style={{ display: "flex", flexDirection: "row" }}>
+            <p style={{ marginRight: 4 }}>Lobby Status: </p>
+            <p
+              style={{
+                color: lobbyStatusRef.current === "waiting" ? "red" : "green",
+              }}
+            >
+              {lobbyStatus}
+            </p>
+          </div>
+          {gameCanStartAgain && score >= 3 ? (
+            <p style={{ color: "green", fontWeight: "bold" }}>Winner!</p>
+          ) : null}
+          {gameCanStartAgain && score < 3 ? (
+            <p style={{ color: "red", fontWeight: "bold" }}>Loser!</p>
+          ) : null}
+          {lobbyStatusRef.current === "in_progress" && !roundComplete
+            ? gameView()
+            : null}
+          {roundComplete ? roundSpinner() : null}
+          <div
+            className="modal-dialog-scrollable chat-box"
+            style={{
+              height: "30vh",
+              backgroundColor: "gray",
+              padding: "20px",
+              borderRadius: "10px",
+              width: "80%",
+              overflowY: "auto",
             }}
-          />
-        </div>
+            ref={chatBoxRef}
+          >
+            {lobbyMessages.map((msg, index) => (
+              <p key={index}>
+                <b>{msg}</b>
+              </p>
+            ))}
+          </div>
+          <div
+            className="input-group mb-3"
+            style={{ width: "80%", marginTop: 5 }}
+          >
+            <span className="input-group-text" id="basic-addon1">
+              Message
+            </span>
+            <input
+              type="text"
+              className="form-control"
+              aria-label="Message"
+              aria-describedby="basic-addon1"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  if (socketRef.current) {
+                    socketRef.current.send(
+                      JSON.stringify({
+                        type: 2,
+                        message: e.currentTarget.value,
+                      })
+                    );
+                    e.currentTarget.value = "";
+                  }
+                }
+              }}
+            />
+          </div>
 
-        {gameCanStart && displayNameRef.current === lobbyLeaderRef.current ? (
-          <button
-            style={{ marginBottom: 20, marginTop: 20 }}
-            className="btn btn-success"
-            onClick={handleStart}
-          >
-            Start
-          </button>
-        ) : null}
-        {gameCanStartAgain &&
-        displayNameRef.current === lobbyLeaderRef.current ? (
-          <button
-            style={{ marginBottom: 20, marginTop: 20 }}
-            className="btn btn-success"
-            onClick={handleStart}
-          >
-            Play Again
-          </button>
-        ) : null}
+          {gameCanStart && displayNameRef.current === lobbyLeaderRef.current ? (
+            <button
+              style={{ marginBottom: 20, marginTop: 20 }}
+              className="btn btn-success"
+              onClick={handleStart}
+            >
+              Start
+            </button>
+          ) : null}
+          {gameCanStartAgain &&
+          displayNameRef.current === lobbyLeaderRef.current ? (
+            <button
+              style={{ marginBottom: 20, marginTop: 20 }}
+              className="btn btn-success"
+              onClick={handleStart}
+            >
+              Play Again
+            </button>
+          ) : null}
+        </div>
       </div>
     );
   };
