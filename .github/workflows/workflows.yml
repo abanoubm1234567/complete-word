@@ -53,45 +53,23 @@ jobs:
           sparse-checkout: |
             api/
 
-      # Cache Google Cloud SDK
-      - name: Cache Google Cloud SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/google-cloud-sdk
-          key: gcloud-${{ runner.os }}-v512.0.0
-
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
-          version: 512.0.0
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: 512.0.0
 
       - name: Configure Docker to use gcloud for authentication
-        run: gcloud auth configure-docker us-east4-docker.pkg.dev --quiet
-
-      # Cache Docker layers
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-api-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-api-
+        run: |
+          gcloud auth configure-docker us-east4-docker.pkg.dev --quiet
 
       - name: Build and Push Docker Image
         run: |
           IMAGE=us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/${{ env.API_IMAGE_NAME }}:latest
-          docker build \
-            --cache-from=type=local,src=/tmp/.buildx-cache \
-            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            -t $IMAGE .
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          docker build -t $IMAGE .
           docker push $IMAGE
 
       - name: Deploy to Cloud Run
@@ -122,54 +100,23 @@ jobs:
           sparse-checkout: |
             ui/
 
-      # Cache Google Cloud SDK
-      - name: Cache Google Cloud SDK
-        uses: actions/cache@v4
-        with:
-          path: ~/google-cloud-sdk
-          key: gcloud-${{ runner.os }}-v512.0.0
-
       - name: Set up Google Cloud SDK
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
-          version: 512.0.0
           service_account_key: ${{ secrets.GCP_SA_KEY }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
-        with:
-          version: 512.0.0
 
       - name: Configure Docker to use gcloud for authentication
-        run: gcloud auth configure-docker us-east4-docker.pkg.dev --quiet
-
-      # Optional: Cache npm dependencies (only useful if building locally before docker)
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: npm-${{ hashFiles('ui/package-lock.json') }}
-          restore-keys: |
-            npm-
-
-      # Cache Docker layers
-      - name: Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-ui-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-ui-
+        run: |
+          gcloud auth configure-docker us-east4-docker.pkg.dev --quiet
 
       - name: Build and Push Docker Image
         run: |
           IMAGE=us-east4-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-docker-repo/${{ env.UI_IMAGE_NAME }}:latest
-          docker build \
-            --cache-from=type=local,src=/tmp/.buildx-cache \
-            --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
-            -t $IMAGE .
-          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          docker build -t $IMAGE .
           docker push $IMAGE
 
       - name: Deploy to Cloud Run
@@ -180,5 +127,5 @@ jobs:
             --service-account github-actions-deployer@${{secrets.GCP_PROJECT_ID}}.iam.gserviceaccount.com \
             --region us-east4 \
             --allow-unauthenticated \
-            --memory=2Gi \
+            --memory=2Gi
             --timeout=20m5s
