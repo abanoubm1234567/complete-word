@@ -1,19 +1,13 @@
-# Fetching the latest node image on alpine linux
-FROM node:alpine AS development
-
-# Declaring env
-ENV NODE_ENV development
-
-# Setting up the work directory
-WORKDIR /react-app
-
-# Installing dependencies
-COPY ./package*.json /react-app
-
-RUN npm ci
-
-# Copying all the files in our project
+# Build Stage
+FROM node:18-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
 COPY . .
-
-# Starting our application
-CMD ["npm","start"]
+RUN npm run build
+ 
+# Production Stage
+FROM nginx:stable-alpine AS production
+COPY --from=build /app/build /usr/share/nginx/html
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]
