@@ -23,7 +23,6 @@ function Lobby() {
   const socketRef = useRef<WebSocket | null>(null);
   const displayNameRef = useRef<string | null>(null);
   const lobbyLeaderRef = useRef<string | null>(null);
-  const isWinnerRef = useRef<boolean>(false);
 
   const location = useLocation();
 
