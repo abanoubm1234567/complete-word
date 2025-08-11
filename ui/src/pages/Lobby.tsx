@@ -23,6 +23,7 @@ function Lobby() {
   const socketRef = useRef<WebSocket | null>(null);
   const displayNameRef = useRef<string | null>(null);
   const lobbyLeaderRef = useRef<string | null>(null);
+  const isWinnerRef = useRef<boolean>(false);
 
   const location = useLocation();
 
@@ -194,7 +195,15 @@ function Lobby() {
             setPlayerScores(message.scores || {});
             break;
           case 4: // SCORE
-            setPlayerScores(message.scores || {});
+            // Sort the scores by highest value first before setting state
+            const scores = (message.scores as Record<string, number>) || {};
+            const sortedEntries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            const sortedScores: Record<string, number> = {};
+            sortedEntries.forEach(([player, score]) => {
+              sortedScores[player] = score;
+            });
+            setPlayerScores(sortedScores);
+            
             break;
           default:
             console.warn("Unknown message type:", type);
@@ -372,7 +381,8 @@ function Lobby() {
               alignItems: "flex-start",
             }}
           >
-            {Object.entries(playerScores).map(([player, score]) => (
+            {
+            Object.entries(playerScores).map(([player, score]) => (
               <h3>
                 {player}: {score}
               </h3>
@@ -405,10 +415,12 @@ function Lobby() {
               {lobbyStatus}
             </p>
           </div>
-          {gameCanStartAgain && score >= 3 ? (
+          {gameCanStartAgain &&
+            Object.entries(playerScores).length > 0 &&
+            displayNameRef.current === Object.entries(playerScores)[0][0] ? (
             <p style={{ color: "green", fontWeight: "bold" }}>Winner!</p>
           ) : null}
-          {gameCanStartAgain && score < 3 ? (
+          {gameCanStartAgain && displayNameRef.current !== Object.entries(playerScores)[0][0] ? (
             <p style={{ color: "red", fontWeight: "bold" }}>Loser!</p>
           ) : null}
           {lobbyStatusRef.current === "in_progress" && !roundComplete
