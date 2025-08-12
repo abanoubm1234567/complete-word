@@ -17,18 +17,20 @@ function Lobby() {
   const [score, setScore] = useState<number>(0);
   const [roundComplete, setRoundComplete] = useState<boolean>(false);
   const [playerScores, setPlayerScores] = useState<Record<string, number>>({});
+  const [numSkips, setNumSkips] = useState<number>(0);
 
   const lobbyStatusRef = useRef<string>("waiting");
   const initialRenderComplete = useRef<boolean>(false);
   const socketRef = useRef<WebSocket | null>(null);
   const displayNameRef = useRef<string | null>(null);
   const lobbyLeaderRef = useRef<string | null>(null);
+  const alreadySkippedRef = useRef<boolean>(false);
 
   const location = useLocation();
 
   const nav = useNavigate();
 
-  const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY;
+  const apiKey = "process.env.REACT_APP_COMPLETE_WORD_API_KEY"; // Replace with actual API key or environment variable
 
   //Create a lobby if the user comes in with the "create" operation
   //then send a request to the backend to create a lobby
@@ -44,7 +46,8 @@ function Lobby() {
 
     axios
       .post(
-        "https://complete-word-api-510153365158.us-east4.run.app/create",
+        "http://localhost:8000/create", // Use localhost for local development
+        //"https://complete-word-api-510153365158.us-east4.run.app/create",
         null,
         {
           params: {
@@ -75,12 +78,16 @@ function Lobby() {
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
     if (
-      initialRenderComplete.current ||
       location.state?.operation !== "join" ||
       !apiKey ||
       !location.state?.lobby_key ||
       !location.state?.display_name
     ) {
+      console.log("Not joining lobby, missing information.");
+      console.log("operation:", location.state?.operation);
+      console.log("lobby_key:", location.state?.lobby_key);
+      console.log("display_name:", location.state?.display_name);
+      console.log("apiKey:", apiKey);
       return;
     }
 
@@ -97,13 +104,24 @@ function Lobby() {
 
   useEffect(() => {
     if (!newLobbyKey || !displayNameRef.current) {
+      console.warn(
+        "WebSocket not initialized: Missing lobby key or display name."
+      );
+      console.log(
+        "newLobbyKey:",
+        newLobbyKey,
+        "displayNameRef:",
+        displayNameRef.current
+      );
       return;
     }
+    console.log("Connecting to WebSocket with lobby key:", newLobbyKey);
     const ws = new WebSocket(
-      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
-        `?display_name=${encodeURIComponent(
-          displayNameRef.current
-        )}&X-API-Key=${encodeURIComponent(apiKey || "")}`
+      //`wss://complete-word-api-510153365158.us-east4.run.app` +
+      `ws://localhost:8000` +
+        `/lobby/${newLobbyKey}` +
+        `?display_name=${encodeURIComponent(displayNameRef.current)}`
+      // + `&X-API-Key=${encodeURIComponent(apiKey || "")}`
     );
 
     socketRef.current = ws;
@@ -162,7 +180,10 @@ function Lobby() {
                 if (message.message.length === 2) {
                   if (message.round !== 1) {
                     setRoundComplete(true);
-                    setTimeout(() => setRoundComplete(false), 1000);
+                    setTimeout(() => {
+                      setRoundComplete(false);
+                      alreadySkippedRef.current = false;
+                    }, 1000);
                   }
                   setFirstLetter(message.message[0]);
                   setLastLetter(message.message[1]);
@@ -173,6 +194,7 @@ function Lobby() {
                 if (message.message === displayNameRef.current) {
                   setScore((prev) => prev + 1);
                 }
+                setNumSkips(message.numSkips);
                 break;
               case "completed":
                 setLobbyStatus("Game completed!");
@@ -196,13 +218,15 @@ function Lobby() {
           case 4: // SCORE
             // Sort the scores by highest value first before setting state
             const scores = (message.scores as Record<string, number>) || {};
-            const sortedEntries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            const sortedEntries = Object.entries(scores).sort(
+              (a, b) => b[1] - a[1]
+            );
             const sortedScores: Record<string, number> = {};
             sortedEntries.forEach(([player, score]) => {
               sortedScores[player] = score;
             });
             setPlayerScores(sortedScores);
-            
+
             break;
           default:
             console.warn("Unknown message type:", type);
@@ -279,7 +303,9 @@ function Lobby() {
           alignItems: "center",
         }}
       >
-        <p className="text-center">{round === 8 ? "Concluding game..." : "Starting next round..."}</p>
+        <p className="text-center">
+          {round === 8 ? "Concluding game..." : "Starting next round..."}
+        </p>
         <div className="spinner-border" role="status"></div>
       </div>
     );
@@ -320,6 +346,24 @@ function Lobby() {
       <p>
         <span style={{ fontWeight: "bold" }}>Last letter:</span> {lastLetter}
       </p>
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <button
+          className="btn btn-danger"
+          onClick={() => {
+            if (!socketRef.current || alreadySkippedRef.current) return;
+            alreadySkippedRef.current = true;
+            socketRef.current.send(
+              JSON.stringify({
+                type: 1,
+                message: "skipWord",
+              })
+            );
+          }}
+          style={{ marginBottom: 10 }}
+        >
+          Skip ({numSkips}/{Object.entries(playerScores).length})
+        </button>
+      </div>
       {roundComplete && (
         <div
           style={{
@@ -380,8 +424,7 @@ function Lobby() {
               alignItems: "flex-start",
             }}
           >
-            {
-            Object.entries(playerScores).map(([player, score]) => (
+            {Object.entries(playerScores).map(([player, score]) => (
               <h3>
                 {player}: {score}
               </h3>
@@ -415,11 +458,12 @@ function Lobby() {
             </p>
           </div>
           {gameCanStartAgain &&
-            Object.entries(playerScores).length > 0 &&
-            displayNameRef.current === Object.entries(playerScores)[0][0] ? (
+          Object.entries(playerScores).length > 0 &&
+          displayNameRef.current === Object.entries(playerScores)[0][0] ? (
             <p style={{ color: "green", fontWeight: "bold" }}>Winner!</p>
           ) : null}
-          {gameCanStartAgain && displayNameRef.current !== Object.entries(playerScores)[0][0] ? (
+          {gameCanStartAgain &&
+          displayNameRef.current !== Object.entries(playerScores)[0][0] ? (
             <p style={{ color: "red", fontWeight: "bold" }}>Loser!</p>
           ) : null}
           {lobbyStatusRef.current === "in_progress" && !roundComplete

@@ -42,7 +42,7 @@ class MessageType(IntEnum):
     SCORES = 4
 
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None):
+    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None, numSkips: int = 0):
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
@@ -51,6 +51,7 @@ class Lobby:
         self.firstLetter = firstLetter
         self.lastLetter = lastLetter
         self.playersToScores = playersToScores or {}
+        self.numSkips = numSkips
 
     async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
         for _, ws in self.playersToSockets.items():
@@ -65,7 +66,8 @@ class Lobby:
                         "round": self.round,
                         "firstLetter": self.firstLetter,
                         "lastLetter": self.lastLetter,
-                        "scores": self.playersToScores
+                        "scores": self.playersToScores,
+                        "numSkips": self.numSkips
                     })
                 except Exception as e:
                     print(f"Error sending: {e}")
@@ -147,8 +149,8 @@ async def join(lobby_key: str, display_name: str):
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
-    api_key = websocket.headers.get("X-API-Key")
-    origin = websocket.headers.get("origin")
+   # api_key = websocket.headers.get("X-API-Key")
+   # origin = websocket.headers.get("origin")
     #if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
     #    await websocket.close(code=1008)  # Policy Violation
     #    return
@@ -162,8 +164,9 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
             return d.check(word)
         print('inavlid word')
         return False
-
+    print("before accept")
     await websocket.accept()
+    print("after accept")
     display_name = websocket.query_params.get("display_name")
     if not display_name:
         print("no display name")
@@ -244,6 +247,32 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
                     else:
                         continue
+
+            elif (json.loads(data)["type"] == MessageType.INFO.value and json.loads(data)["message"] == "skipWord"):
+                lobby.numSkips += 1
+                if lobby.numSkips < len(lobby.playersToSockets):
+                    await lobby.broadcast("skip", None, MessageType.INFO)
+                else:
+                    lobby.numSkips = 0
+                    lobby.round += 1
+                    await lobby.broadcast("Word skipped!", None, MessageType.INFO)
+                    lobby.firstLetter = random.choice(string.ascii_lowercase)
+                    while lobby.firstLetter in bad_start:
+                        lobby.firstLetter = random.choice(string.ascii_lowercase)
+                    lobby.lastLetter = random.choice(string.ascii_lowercase)
+                    while lobby.lastLetter in bad_end:
+                        lobby.lastLetter = random.choice(string.ascii_lowercase)
+                    await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
+
+                    if lobby.round > 7:
+                        lobby.status = LobbyStatus.COMPLETED
+                        lobby.round = 1
+                        await lobby.broadcast("Game completed!", None, MessageType.INFO)
+
+                    else:
+                        continue
+
+
 
     except WebSocketDisconnect:
         lobby.disconnect(display_name)

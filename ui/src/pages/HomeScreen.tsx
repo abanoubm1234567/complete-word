@@ -45,7 +45,8 @@ function HomeScreen() {
     if (exitFunction) return;
     axios
       .post(
-        "https://complete-word-api-510153365158.us-east4.run.app/join",
+        //"https://complete-word-api-510153365158.us-east4.run.app/join",
+         "http://localhost:8000/join", // Use localhost for local development
         null,
         {
           params: {
