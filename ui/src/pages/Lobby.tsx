@@ -53,7 +53,7 @@ function Lobby() {
             display_name: displayName,
           },
           headers: {
-            "X-API-Key": apiKey,
+            "Backend-API-Key": apiKey,
           },
         }
       )
@@ -98,9 +98,6 @@ function Lobby() {
 
   useEffect(() => {
     if (!newLobbyKey || !displayNameRef.current) {
-      console.warn(
-        "WebSocket not initialized: Missing lobby key or display name."
-      );
       return;
     }
     const ws = new WebSocket(

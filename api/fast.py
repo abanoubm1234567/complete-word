@@ -16,7 +16,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["X-API-Key"],  # Allow all headers
+    allow_headers=["Backend-API-Key"], 
 
 )
 
@@ -26,6 +26,8 @@ API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
 
 if not API_KEY:
     raise RuntimeError("API_KEY not set in environment")
+
+print(f"API: {API_KEY}")
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
@@ -109,18 +111,9 @@ def save_on_shutdown():
         json.dump(lobbies, f, indent=2)
     print("Saved lobbies to lobbies.json")
 '''
-
-@app.middleware("https")
-async def check_api_key(request: Request, call_next):
-    api_key = request.headers.get("X-API-Key")
-    if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
-    response = await call_next(request)
-    return response
-
 @app.middleware("http")
 async def check_api_key(request: Request, call_next):
-    api_key = request.headers.get("X-API-Key")
+    api_key = request.headers.get("Backend-API-Key")
     if api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
     response = await call_next(request)
@@ -165,7 +158,7 @@ async def join(lobby_key: str, display_name: str):
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
-   # api_key = websocket.headers.get("X-API-Key")
+   # api_key = websocket.headers.get("Backend-API-Key")
    # origin = websocket.headers.get("origin")
     #if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
     #    await websocket.close(code=1008)  # Policy Violation

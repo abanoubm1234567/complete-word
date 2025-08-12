@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import "../styles/HomeScreen.css";
@@ -54,7 +54,7 @@ function HomeScreen() {
           display_name: displayName.current,
         },
         headers: {
-          "X-API-Key": apiKey,
+          "Backend-API-Key": apiKey,
         },
       })
       .then((response) => {
