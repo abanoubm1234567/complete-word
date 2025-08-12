@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import "../styles/HomeScreen.css";
@@ -14,6 +14,10 @@ function HomeScreen() {
   const [emptyLobbyKeyError, setEmptyLobbyKeyError] = useState<boolean>(false);
   const [invalidLobbyKeyError, setInvalidLobbyKeyError] =
     useState<boolean>(false);
+
+  const apiUrl =
+    process.env.REACT_APP_COMPLETE_WORD_API_URL || "http://localhost:8000";
+  const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY;
 
   const handleCreate = () => {
     if (emptyLobbyKeyError || invalidLobbyKeyError) {
@@ -44,23 +48,17 @@ function HomeScreen() {
     }
     if (exitFunction) return;
     axios
-      .post(
-        "https://complete-word-api-510153365158.us-east4.run.app/join",
-         //"http://localhost:8000/join", // Use localhost for local development
-        null,
-        {
-          params: {
-            lobby_key: joinLobbyKey.current,
-            display_name: displayName.current,
-          },
-          headers: {
-            "X-API-Key": process.env.REACT_APP_COMPLETE_WORD_API_KEY || "",
-          },
-        }
-      )
+      .post(apiUrl + `/join`, null, {
+        params: {
+          lobby_key: joinLobbyKey.current,
+          display_name: displayName.current,
+        },
+        headers: {
+          "X-API-Key": apiKey,
+        },
+      })
       .then((response) => {
         if (response.data === true) {
-          //console.log("joinLobbyKey.current:", joinLobbyKey.current); // Returns correct value
           nav("/lobby", {
             state: {
               operation: "join",

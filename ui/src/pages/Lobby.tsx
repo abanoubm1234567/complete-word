@@ -30,7 +30,9 @@ function Lobby() {
 
   const nav = useNavigate();
 
-  const apiKey = "process.env.REACT_APP_COMPLETE_WORD_API_KEY"; // Replace with actual API key or environment variable
+  const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY; // Replace with actual API key or environment variable
+  const apiUrl = process.env.REACT_APP_COMPLETE_WORD_API_URL || "http://localhost:8000";
+  const wsURL = process.env.REACT_APP_COMPLETE_WORD_WS_URL || "ws://localhost:8000";
 
   //Create a lobby if the user comes in with the "create" operation
   //then send a request to the backend to create a lobby
@@ -39,15 +41,13 @@ function Lobby() {
     const shouldCreateLobby = location.state?.operation === "create";
     const displayName = location.state?.display_name;
 
-    if (!shouldCreateLobby || !displayName) return;
-
-    console.log("Creating lobby with display name:", displayName);
+    if (!shouldCreateLobby || !displayName || !apiUrl || !apiKey) return;
     displayNameRef.current = displayName;
 
     axios
       .post(
-        //"http://localhost:8000/create", // Use localhost for local development
-        "https://complete-word-api-510153365158.us-east4.run.app/create",
+        "http://localhost:8000/create", // Use localhost for local development
+        //apiUrl+`/create`,
         null,
         {
           params: {
@@ -73,7 +73,7 @@ function Lobby() {
         console.error("Error creating lobby:", error);
         setNewLobbyKey(null);
       });
-  }, [location.state?.operation, location.state?.display_name, apiKey]);
+  }, [location.state?.operation, location.state?.display_name, apiKey, apiUrl]);
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
@@ -83,11 +83,6 @@ function Lobby() {
       !location.state?.lobby_key ||
       !location.state?.display_name
     ) {
-      console.log("Not joining lobby, missing information.");
-      console.log("operation:", location.state?.operation);
-      console.log("lobby_key:", location.state?.lobby_key);
-      console.log("display_name:", location.state?.display_name);
-      console.log("apiKey:", apiKey);
       return;
     }
 
@@ -107,21 +102,13 @@ function Lobby() {
       console.warn(
         "WebSocket not initialized: Missing lobby key or display name."
       );
-      console.log(
-        "newLobbyKey:",
-        newLobbyKey,
-        "displayNameRef:",
-        displayNameRef.current
-      );
       return;
     }
-    console.log("Connecting to WebSocket with lobby key:", newLobbyKey);
     const ws = new WebSocket(
-      `wss://complete-word-api-510153365158.us-east4.run.app` +
+      wsURL +
       //`ws://localhost:8000` +
         `/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}`
-      // + `&X-API-Key=${encodeURIComponent(apiKey || "")}`
     );
 
     socketRef.current = ws;
@@ -240,7 +227,7 @@ function Lobby() {
       ws.close();
       console.log("WebSocket connection closed on cleanup.");
     };
-  }, [newLobbyKey, nav, apiKey, displayNameRef]);
+  }, [newLobbyKey, nav, apiKey, displayNameRef, wsURL]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {

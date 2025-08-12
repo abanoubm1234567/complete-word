@@ -7,6 +7,7 @@ import random
 import string
 import enchant
 import os
+from dotenv import load_dotenv
 
 app = FastAPI()
 
@@ -15,18 +16,16 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_headers=["X-API-Key"],  # Allow all headers
 
 )
 
-ALLOWED_WS_ORIGINS = {
-    "*",
-}
+load_dotenv()
 
-#API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
+API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
 
-#if not API_KEY:
-#    raise RuntimeError("API_KEY not set in environment")
+if not API_KEY:
+    raise RuntimeError("API_KEY not set in environment")
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
@@ -111,7 +110,25 @@ def save_on_shutdown():
     print("Saved lobbies to lobbies.json")
 '''
 
+@app.middleware("https")
+async def check_api_key(request: Request, call_next):
+    api_key = request.headers.get("X-API-Key")
+    if api_key != API_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
+    response = await call_next(request)
+    return response
+
+@app.middleware("http")
+async def check_api_key(request: Request, call_next):
+    api_key = request.headers.get("X-API-Key")
+    if api_key != os.getenv("REACT_APP_COMPLETE_WORD_API_KEY"):
+        print(f"Invalid API Key: {api_key}")
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
+    response = await call_next(request)
+    return response
+
 lobbyNumTracker = 0
+
 @app.get("/")
 def read_root():
     result = []
