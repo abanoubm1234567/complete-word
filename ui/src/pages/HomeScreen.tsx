@@ -46,7 +46,6 @@ function HomeScreen() {
     axios
       .post(
         "https://complete-word-api-510153365158.us-east4.run.app/join",
-        //"http://localhost:8000/join", // Use this for local development
         null,
         {
           params: {

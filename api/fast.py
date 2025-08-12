@@ -42,7 +42,7 @@ class MessageType(IntEnum):
     SCORES = 4
 
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None, numSkips: int = 0):
+    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None):
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
@@ -51,7 +51,6 @@ class Lobby:
         self.firstLetter = firstLetter
         self.lastLetter = lastLetter
         self.playersToScores = playersToScores or {}
-        self.numSkips = numSkips
 
     async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
         for _, ws in self.playersToSockets.items():
@@ -245,20 +244,6 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
                     else:
                         continue
-            elif (json.load(data)["type"] == MessageType.INFO.value and json.loads(data)["message"] == "skipWord"):
-                lobby.numSkips += 1
-                if (lobby.numSkips < len(lobby.playersToSockets)):
-                    continue
-                else:
-                    lobby.numSkips = 0
-                    lobby.round += 1
-                    lobby.firstLetter = random.choice(string.ascii_lowercase)
-                    while lobby.firstLetter in bad_start:
-                        lobby.firstLetter = random.choice(string.ascii_lowercase)
-                    lobby.lastLetter = random.choice(string.ascii_lowercase)
-                    while lobby.lastLetter in bad_end:
-                        lobby.lastLetter = random.choice(string.ascii_lowercase)
-                    await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
 
     except WebSocketDisconnect:
         lobby.disconnect(display_name)

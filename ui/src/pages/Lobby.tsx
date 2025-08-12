@@ -17,14 +17,12 @@ function Lobby() {
   const [score, setScore] = useState<number>(0);
   const [roundComplete, setRoundComplete] = useState<boolean>(false);
   const [playerScores, setPlayerScores] = useState<Record<string, number>>({});
-  const [skips, setSkips] = useState<number>(0);
 
   const lobbyStatusRef = useRef<string>("waiting");
   const initialRenderComplete = useRef<boolean>(false);
   const socketRef = useRef<WebSocket | null>(null);
   const displayNameRef = useRef<string | null>(null);
   const lobbyLeaderRef = useRef<string | null>(null);
-  const alreadySkippedRef = useRef<boolean>(false);
 
   const location = useLocation();
 
@@ -47,7 +45,6 @@ function Lobby() {
     axios
       .post(
         "https://complete-word-api-510153365158.us-east4.run.app/create",
-        //"http://localhost:8000/create", // Use this for local development
         null,
         {
           params: {
@@ -103,9 +100,7 @@ function Lobby() {
       return;
     }
     const ws = new WebSocket(
-      `wss://complete-word-api-510153365158.us-east4.run.app` +
-      //`ws://localhost:8000` +
-      `/lobby/${newLobbyKey}` +
+      `wss://complete-word-api-510153365158.us-east4.run.app/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(
           displayNameRef.current
         )}&X-API-Key=${encodeURIComponent(apiKey || "")}`
@@ -306,21 +301,8 @@ function Lobby() {
     );
   };
 
-  const handleSkip = () => {
-    if (!socketRef.current || alreadySkippedRef.current) return;
-    alreadySkippedRef.current = true;
-    setSkips((prev) => prev + 1);
-    socketRef.current.send(
-      JSON.stringify({
-        type: 1,
-        message: "skipWord",
-      })
-    );
-
-  }
-
   const gameView = () => (
-    <div style={{ marginBottom: 20, alignContent: "center", display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div style={{ marginBottom: 20 }}>
       <div
         style={{
           fontSize: "1.5rem",
@@ -338,7 +320,6 @@ function Lobby() {
       <p>
         <span style={{ fontWeight: "bold" }}>Last letter:</span> {lastLetter}
       </p>
-      <button type="button" className="btn btn-danger" onClick={handleSkip}>Skip ({skips}/Object.keys(playerScores).length)</button>
       {roundComplete && (
         <div
           style={{
