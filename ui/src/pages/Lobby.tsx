@@ -46,8 +46,8 @@ function Lobby() {
 
     axios
       .post(
-        "http://localhost:8000/create", // Use localhost for local development
-        //"https://complete-word-api-510153365158.us-east4.run.app/create",
+        //"http://localhost:8000/create", // Use localhost for local development
+        "https://complete-word-api-510153365158.us-east4.run.app/create",
         null,
         {
           params: {
@@ -117,8 +117,8 @@ function Lobby() {
     }
     console.log("Connecting to WebSocket with lobby key:", newLobbyKey);
     const ws = new WebSocket(
-      //`wss://complete-word-api-510153365158.us-east4.run.app` +
-      `ws://localhost:8000` +
+      `wss://complete-word-api-510153365158.us-east4.run.app` +
+      //`ws://localhost:8000` +
         `/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}`
       // + `&X-API-Key=${encodeURIComponent(apiKey || "")}`
