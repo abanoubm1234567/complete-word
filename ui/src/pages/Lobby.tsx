@@ -30,7 +30,7 @@ function Lobby() {
 
   const nav = useNavigate();
 
-  const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY; // Replace with actual API key or environment variable
+  const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY;
   const apiUrl = process.env.REACT_APP_COMPLETE_WORD_API_URL || "http://localhost:8000";
   const wsURL = process.env.REACT_APP_COMPLETE_WORD_WS_URL || "ws://localhost:8000";
 
@@ -46,8 +46,8 @@ function Lobby() {
 
     axios
       .post(
-        "http://localhost:8000/create", // Use localhost for local development
-        //apiUrl+`/create`,
+        
+        apiUrl+`/create`,
         null,
         {
           params: {
@@ -106,7 +106,6 @@ function Lobby() {
     }
     const ws = new WebSocket(
       wsURL +
-      //`ws://localhost:8000` +
         `/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}`
     );
