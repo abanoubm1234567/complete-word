@@ -46,7 +46,6 @@ function Lobby() {
 
     axios
       .post(
-        
         apiUrl+`/create`,
         null,
         {
@@ -54,7 +53,7 @@ function Lobby() {
             display_name: displayName,
           },
           headers: {
-            "X-API-Key": apiKey || "",
+            "X-API-Key": apiKey,
           },
         }
       )

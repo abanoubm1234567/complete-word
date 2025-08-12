@@ -121,8 +121,7 @@ async def check_api_key(request: Request, call_next):
 @app.middleware("http")
 async def check_api_key(request: Request, call_next):
     api_key = request.headers.get("X-API-Key")
-    if api_key != os.getenv("REACT_APP_COMPLETE_WORD_API_KEY"):
-        print(f"Invalid API Key: {api_key}")
+    if api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
     response = await call_next(request)
     return response
