@@ -29,8 +29,6 @@ API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
 if not API_KEY:
     raise RuntimeError("API_KEY not set in environment")
 
-api_key_header = APIKeyHeader(name="Backend-API-Key")
-
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
     READY = "ready"
@@ -95,8 +93,9 @@ class Lobby:
         }
 lobbies = {}
 
-async def get_api_key(api_key: str = Security(api_key_header)):
+async def check_api_key(api_key: str):
     if api_key == API_KEY:
+        print('verified')
         return api_key
     else:
         raise HTTPException(
@@ -107,7 +106,9 @@ async def get_api_key(api_key: str = Security(api_key_header)):
 lobbyNumTracker = 0
 
 @app.get("/")
-def read_root(apiKey: str = Depends(get_api_key)):
+async def read_root(request: Request):
+    api_key = request.headers.get('Backend-API-Key')
+    await check_api_key(api_key)
     result = []
     for lobby in lobbies.values():
         result.append(lobby.to_dict())
@@ -115,7 +116,9 @@ def read_root(apiKey: str = Depends(get_api_key)):
 
 
 @app.post("/create")
-async def create(display_name: str, apiKey: str = Depends(get_api_key)):
+async def create(display_name: str, request: Request):
+    api_key = request.headers.get('Backend-API-Key')
+    await check_api_key(api_key)
     global lobbyNumTracker
     lobby_key = lobbyNumTracker
     lobbyNumTracker += 1
@@ -128,7 +131,9 @@ async def create(display_name: str, apiKey: str = Depends(get_api_key)):
     return lobby_key
 
 @app.post("/join")
-async def join(lobby_key: str, display_name: str, apiKey: str = Depends(get_api_key)):
+async def join(lobby_key: str, display_name: str, request: Request):
+    api_key = request.headers.get('Backend-API-Key')
+    await check_api_key(api_key)
     if lobby_key not in lobbies:
         return False
     lobby = lobbies[lobby_key]
