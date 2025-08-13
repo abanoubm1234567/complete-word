@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Security, status, Depends
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from enum import Enum, IntEnum
@@ -19,7 +19,6 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["Backend-API-Key"], 
-
 )
 
 load_dotenv()
