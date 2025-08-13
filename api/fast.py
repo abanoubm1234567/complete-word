@@ -147,7 +147,7 @@ async def join(lobby_key: str, display_name: str, request: Request):
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
 
-    bad_start = {"x", "q", "z", "j", "v", "y", "k"}
+    bad_start = {"x", "z", "j", "v", "y", "k"}
     bad_end = {"q", "j", "v", "x", "z", "c", "u", "i"}
 
     def is_valid_word(word: str, first_letter: str, last_letter: str) -> bool:
