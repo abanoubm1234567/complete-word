@@ -1,6 +1,7 @@
 import uuid
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, HTTPException, Security, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
 from enum import Enum, IntEnum
 import json
 import random
@@ -9,11 +10,12 @@ import enchant
 import os
 from dotenv import load_dotenv
 
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "https://complete-word-api-510153365158.us-east4.run.app/"],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["Backend-API-Key"], 
@@ -27,7 +29,7 @@ API_KEY = os.getenv("REACT_APP_COMPLETE_WORD_API_KEY")
 if not API_KEY:
     raise RuntimeError("API_KEY not set in environment")
 
-print(f"API: {API_KEY}")
+api_key_header = APIKeyHeader(name="Backend-API-Key")
 
 class LobbyStatus(str, Enum):
     WAITING = "waiting"
@@ -93,36 +95,19 @@ class Lobby:
         }
 lobbies = {}
 
-'''
-# Read the lobbies from lobbies.json file
-
-with open("lobbies.json", "r") as file:
-    try:
-        lobbies_data = json.load(file)
-        for key, value in lobbies_data.items():
-            lobby = Lobby(key=key, players=value["players"], status=value["status"])#
-            lobbies[key] = lobby
-    except json.JSONDecodeError:
-        print("Error decoding JSON from lobbies.json. Starting with an empty lobby list.")
-
-@app.on_event("shutdown")
-def save_on_shutdown():
-    with open("lobbies.json", "w") as f:
-        json.dump(lobbies, f, indent=2)
-    print("Saved lobbies to lobbies.json")
-'''
-@app.middleware("http")
-async def check_api_key(request: Request, call_next):
-    api_key = request.headers.get("Backend-API-Key")
-    if api_key != API_KEY:
-        raise HTTPException(status_code=403, detail="Forbidden: Invalid API Key")
-    response = await call_next(request)
-    return response
+async def get_api_key(api_key: str = Security(api_key_header)):
+    if api_key == API_KEY:
+        return api_key
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Could not validate API Key",
+        )
 
 lobbyNumTracker = 0
 
 @app.get("/")
-def read_root():
+def read_root(apiKey: str = Depends(get_api_key)):
     result = []
     for lobby in lobbies.values():
         result.append(lobby.to_dict())
@@ -130,7 +115,7 @@ def read_root():
 
 
 @app.post("/create")
-async def create(display_name: str):
+async def create(display_name: str, apiKey: str = Depends(get_api_key)):
     global lobbyNumTracker
     lobby_key = lobbyNumTracker
     lobbyNumTracker += 1
@@ -143,7 +128,7 @@ async def create(display_name: str):
     return lobby_key
 
 @app.post("/join")
-async def join(lobby_key: str, display_name: str):
+async def join(lobby_key: str, display_name: str, apiKey: str = Depends(get_api_key)):
     if lobby_key not in lobbies:
         return False
     lobby = lobbies[lobby_key]
@@ -157,12 +142,6 @@ async def join(lobby_key: str, display_name: str):
 
 @app.websocket("/lobby/{lobby_key}")
 async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
-
-   # api_key = websocket.headers.get("Backend-API-Key")
-   # origin = websocket.headers.get("origin")
-    #if origin not in ALLOWED_WS_ORIGINS or api_key != API_KEY:
-    #    await websocket.close(code=1008)  # Policy Violation
-    #    return
 
     bad_start = {"x", "q", "z", "j", "v", "y", "k"}
     bad_end = {"q", "j", "v", "x", "z", "c", "u", "i"}
