@@ -15,7 +15,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://complete-word-api-510153365158.us-east4.run.app/"],
+    allow_origins=["http://localhost:3000", "https://complete-word-ui-510153365158.us-east4.run.app/"],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["Backend-API-Key"], 
