@@ -42,7 +42,19 @@ class MessageType(IntEnum):
     SCORES = 4
 
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None, numSkips: int = 0, weightedWords: bool = True):
+    def __init__(
+        self, key: str,
+        status="waiting",
+        playersToSockets: dict = None,
+        leader: str = None,
+        round: int = 1,
+        firstLetter: str = None,
+        lastLetter: str = None,
+        playersToScores: dict = None,
+        numSkips: int = 0,
+        weightedWords: bool = True
+        ):
+
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
@@ -117,19 +129,13 @@ async def read_root(request: Request):
 
 
 @app.post("/create")
-async def create(display_name: str, weighted_words: bool, request: Request):
+async def create(display_name: str, request: Request):
     api_key = request.headers.get('Backend-API-Key')
     await check_api_key(api_key)
     global lobbyNumTracker
     lobby_key = lobbyNumTracker
     lobbyNumTracker += 1
-    new_lobby = Lobby(key=lobby_key)
-    lobbies[lobby_key] = new_lobby
-    lobbies[lobby_key].playersToSockets[display_name] = None
-    lobbies[lobby_key].playersToScores[display_name] = 0
-    lobbies[lobby_key].leader = display_name
-    lobbies[lobby_key].weightedWords = weighted_words
-    print(f"Created lobby with key: {lobby_key}")
+    print(f"Reserved lobby key number {lobby_key}")
     return lobby_key
 
 @app.post("/join")
@@ -140,7 +146,7 @@ async def join(lobby_key: str, display_name: str, request: Request):
         return False
     lobby = lobbies[lobby_key]
     if display_name in lobby.playersToSockets:
-        lobby.playersToSockets[display_name+"2"] = None
+        lobby.playersToSockets[display_name+"(2)"] = None
     else:
         lobby.playersToSockets[display_name] = None
     lobby.playersToScores[display_name] = 0
@@ -163,6 +169,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
     await websocket.accept()
     print("after accept")
     display_name = websocket.query_params.get("display_name")
+    weighted_words = True if websocket.query_params.get("weighted_words") == "true" else False
     if not display_name:
         print("no display name")
         await websocket.close()
@@ -176,6 +183,8 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
         lobbies[lobby_key].playersToSockets[display_name] = None
         lobbies[lobby_key].playersToScores[display_name] = 0
         lobbies[lobby_key].leader = display_name
+        lobbies[lobby_key].weightedWords = weighted_words
+        print("weighted_words from frontend: ", weighted_words)
         print(f"Created lobby with key: {lobby_key}")
 
     lobby.playersToSockets[display_name] = websocket

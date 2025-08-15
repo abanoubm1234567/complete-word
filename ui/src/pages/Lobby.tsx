@@ -25,7 +25,7 @@ function Lobby() {
   const displayNameRef = useRef<string | null>(null);
   const lobbyLeaderRef = useRef<string | null>(null);
   const alreadySkippedRef = useRef<boolean>(false);
-  const weightedWordsRef = useRef<boolean | null>(null);
+  const alreadyCreatedLobbyRef = useRef<boolean>(false);
 
   const location = useLocation();
 
@@ -37,22 +37,27 @@ function Lobby() {
   const wsURL =
     process.env.REACT_APP_COMPLETE_WORD_WS_URL || "ws://localhost:8000";
 
-  //Create a lobby if the user comes in with the "create" operation
-  //then send a request to the backend to create a lobby
-  //and store the lobby key in the state
+  //Reserve a lobby number for the player if they come in with a create
+  //parameter.
+
   useEffect(() => {
     const shouldCreateLobby = location.state?.operation === "create";
     const displayName = location.state?.display_name;
-    const weightedWords = location.state?.weightedWords;
 
-    if (!shouldCreateLobby || !displayName || !apiUrl || !apiKey) return;
+    if (
+      !shouldCreateLobby ||
+      !displayName ||
+      !apiUrl ||
+      !apiKey ||
+      alreadyCreatedLobbyRef.current
+    )
+      return;
     displayNameRef.current = displayName;
-
+    alreadyCreatedLobbyRef.current = true;
     axios
       .post(apiUrl + `/create`, null, {
         params: {
           display_name: displayName,
-          weighted_words: weightedWords,
         },
         headers: {
           "Backend-API-Key": apiKey,
@@ -61,6 +66,7 @@ function Lobby() {
       .then((response) => {
         if (typeof response.data === "number") {
           console.log("Lobby created with key:", response.data);
+          
           setTimeout(() => {
             setNewLobbyKey(response.data); // Delay to ensure backend state is ready
           }, 500);
@@ -87,7 +93,8 @@ function Lobby() {
       location.state?.operation !== "join" ||
       !apiKey ||
       !location.state?.lobby_key ||
-      !location.state?.display_name
+      !location.state?.display_name ||
+      initialRenderComplete.current
     ) {
       return;
     }
@@ -104,13 +111,17 @@ function Lobby() {
   ]);
 
   useEffect(() => {
-    if (!newLobbyKey || !displayNameRef.current) {
+    const weightedWords = location.state?.weightedWords;
+    
+    if (!newLobbyKey || !displayNameRef.current || weightedWords === null) {
       return;
     }
+
     const ws = new WebSocket(
       wsURL +
         `/lobby/${newLobbyKey}` +
-        `?display_name=${encodeURIComponent(displayNameRef.current)}`
+        `?display_name=${encodeURIComponent(displayNameRef.current)}` +
+        `&weighted_words=${weightedWords}`
     );
 
     socketRef.current = ws;

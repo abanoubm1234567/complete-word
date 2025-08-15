@@ -216,6 +216,9 @@ function HomeScreen() {
                     onChange={(e) => handleDisplayNameChange(e.target.value)}
                   />
                 </div>
+                {displayNameError ? (
+                  <p style={{ color: "red" }}>Display name cannot be empty.</p>
+                ) : null}
                 <div style={{ width: "100%" }}>
                   <InputGroup className="mb-3">
                     <InputGroup.Text>Weighted Words</InputGroup.Text>
