@@ -25,14 +25,17 @@ function Lobby() {
   const displayNameRef = useRef<string | null>(null);
   const lobbyLeaderRef = useRef<string | null>(null);
   const alreadySkippedRef = useRef<boolean>(false);
+  const weightedWordsRef = useRef<boolean | null>(null);
 
   const location = useLocation();
 
   const nav = useNavigate();
 
   const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY;
-  const apiUrl = process.env.REACT_APP_COMPLETE_WORD_API_URL || "http://localhost:8000";
-  const wsURL = process.env.REACT_APP_COMPLETE_WORD_WS_URL || "ws://localhost:8000";
+  const apiUrl =
+    process.env.REACT_APP_COMPLETE_WORD_API_URL || "http://localhost:8000";
+  const wsURL =
+    process.env.REACT_APP_COMPLETE_WORD_WS_URL || "ws://localhost:8000";
 
   //Create a lobby if the user comes in with the "create" operation
   //then send a request to the backend to create a lobby
@@ -40,23 +43,21 @@ function Lobby() {
   useEffect(() => {
     const shouldCreateLobby = location.state?.operation === "create";
     const displayName = location.state?.display_name;
+    const weightedWords = location.state?.weightedWords;
 
     if (!shouldCreateLobby || !displayName || !apiUrl || !apiKey) return;
     displayNameRef.current = displayName;
 
     axios
-      .post(
-        apiUrl+`/create`,
-        null,
-        {
-          params: {
-            display_name: displayName,
-          },
-          headers: {
-            "Backend-API-Key": apiKey,
-          },
-        }
-      )
+      .post(apiUrl + `/create`, null, {
+        params: {
+          display_name: displayName,
+          weighted_words: weightedWords,
+        },
+        headers: {
+          "Backend-API-Key": apiKey,
+        },
+      })
       .then((response) => {
         if (typeof response.data === "number") {
           console.log("Lobby created with key:", response.data);
@@ -72,7 +73,13 @@ function Lobby() {
         console.error("Error creating lobby:", error);
         setNewLobbyKey(null);
       });
-  }, [location.state?.operation, location.state?.display_name, apiKey, apiUrl]);
+  }, [
+    location.state?.operation,
+    location.state?.display_name,
+    apiKey,
+    apiUrl,
+    location.state?.weightedWords,
+  ]);
 
   // Join an existing lobby if the user comes in with a lobby key
   useEffect(() => {
@@ -426,19 +433,30 @@ function Lobby() {
             minWidth: "400px",
           }}
         >
-          <h2>Welcome {location.state?.display_name}!</h2>
-          <p>Your Lobby Key: {newLobbyKey}</p>
-          <p>Share this key with your friend to join the lobby.</p>
-          <div style={{ display: "flex", flexDirection: "row" }}>
-            <p style={{ marginRight: 4 }}>Lobby Status: </p>
-            <p
+          {lobbyStatusRef.current !== "in_progress" ? (
+            <div
               style={{
-                color: lobbyStatusRef.current === "waiting" ? "red" : "green",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
             >
-              {lobbyStatus}
-            </p>
-          </div>
+              <h2>Welcome {location.state?.display_name}!</h2>
+              <p>Your Lobby Key: {newLobbyKey}</p>
+              <p>Share this key with your friend to join the lobby.</p>
+              <div style={{ display: "flex", flexDirection: "row" }}>
+                <p style={{ marginRight: 4 }}>Lobby Status: </p>
+                <p
+                  style={{
+                    color:
+                      lobbyStatusRef.current === "waiting" ? "red" : "green",
+                  }}
+                >
+                  {lobbyStatus}
+                </p>
+              </div>
+            </div>
+          ) : null}
           {gameCanStartAgain &&
           Object.entries(playerScores).length > 0 &&
           displayNameRef.current === Object.entries(playerScores)[0][0] ? (

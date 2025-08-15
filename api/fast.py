@@ -42,7 +42,7 @@ class MessageType(IntEnum):
     SCORES = 4
 
 class Lobby:
-    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None, numSkips: int = 0):
+    def __init__(self, key: str,  status="waiting", playersToSockets: dict = None, leader: str = None, round: int = 1, firstLetter: str = None, lastLetter: str = None, playersToScores: dict = None, numSkips: int = 0, weightedWords: bool = True):
         self.key = key
         self.playersToSockets = playersToSockets or {}
         self.status = status
@@ -52,6 +52,7 @@ class Lobby:
         self.lastLetter = lastLetter
         self.playersToScores = playersToScores or {}
         self.numSkips = numSkips
+        self.weightedWords = weightedWords
 
     async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
         for _, ws in self.playersToSockets.items():
@@ -89,6 +90,7 @@ class Lobby:
             "playersToScores": self.playersToScores,
             "status": self.status,
             "leader": self.leader,
+            "weightedWords": self.weightedWords
         }
 lobbies = {}
 
@@ -115,7 +117,7 @@ async def read_root(request: Request):
 
 
 @app.post("/create")
-async def create(display_name: str, request: Request):
+async def create(display_name: str, weighted_words: bool, request: Request):
     api_key = request.headers.get('Backend-API-Key')
     await check_api_key(api_key)
     global lobbyNumTracker
@@ -126,6 +128,7 @@ async def create(display_name: str, request: Request):
     lobbies[lobby_key].playersToSockets[display_name] = None
     lobbies[lobby_key].playersToScores[display_name] = 0
     lobbies[lobby_key].leader = display_name
+    lobbies[lobby_key].weightedWords = weighted_words
     print(f"Created lobby with key: {lobby_key}")
     return lobby_key
 
@@ -222,7 +225,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                     lobby.round += 1
                 
                     await lobby.broadcast(f"{display_name}", None, MessageType.INFO)
-                    lobby.playersToScores[display_name] += 1
+                    lobby.playersToScores[display_name] += len(word) if lobby.weightedWords else 1
                     await lobby.broadcast("", None, MessageType.SCORES)
                     lobby.firstLetter = random.choice(string.ascii_lowercase)
                     while lobby.firstLetter in bad_start:
