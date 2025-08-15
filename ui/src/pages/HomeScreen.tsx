@@ -1,21 +1,23 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useNavigate } from "react-router-dom";
 import Collapse from "react-bootstrap/Collapse";
-import { InputGroup, Form } from "react-bootstrap";
+import { InputGroup } from "react-bootstrap";
 import "../styles/HomeScreen.css";
 import axios from "axios";
 
 function HomeScreen() {
   const joinLobbyKey = useRef<string>("");
   const displayName = useRef<string>("");
-  const numberOfRoundsRef = useRef<Number>(7);
+  const numberOfRoundsRef = useRef<number>(7);
 
   const nav = useNavigate();
 
   const [displayNameError, setDisplayNameError] = useState<boolean>(false);
   const [emptyLobbyKeyError, setEmptyLobbyKeyError] = useState<boolean>(false);
   const [invalidLobbyKeyError, setInvalidLobbyKeyError] =
+    useState<boolean>(false);
+  const [numberOfRoundsError, setNumberOfRoundsError] =
     useState<boolean>(false);
   const [joinLobbyMenuOpen, setJoinLobbyMenuOpen] = useState<boolean>(false);
   const [createLobbyMenuOpen, setCreateLobbyMenuOpen] =
@@ -27,9 +29,10 @@ function HomeScreen() {
   const apiKey = process.env.REACT_APP_COMPLETE_WORD_API_KEY;
 
   const handleCreate = () => {
-    if (emptyLobbyKeyError || invalidLobbyKeyError) {
+    if (emptyLobbyKeyError || invalidLobbyKeyError || numberOfRoundsError) {
       setEmptyLobbyKeyError(false);
       setInvalidLobbyKeyError(false);
+      setNumberOfRoundsError(false);
     }
     if (displayName.current === "") {
       setDisplayNameError(true);
@@ -39,7 +42,8 @@ function HomeScreen() {
       state: {
         operation: "create",
         display_name: displayName.current,
-        weightedWords: weightedWords
+        weightedWords: weightedWords,
+        numRounds: numberOfRoundsRef.current,
       },
     });
   };
@@ -100,6 +104,15 @@ function HomeScreen() {
       setInvalidLobbyKeyError(false);
     }
     joinLobbyKey.current = value;
+  };
+
+  const handleRoundsChange = (value: string) => {
+    try {
+      const numRounds = parseInt(value);
+      numberOfRoundsRef.current = numRounds;
+    } catch (error) {
+      setNumberOfRoundsError(true);
+    }
   };
 
   return (
@@ -200,7 +213,7 @@ function HomeScreen() {
               </div>
             </Collapse>
             <Collapse in={createLobbyMenuOpen}>
-              <div id="createLobbyMenu">
+              <div id="createLobbyMenu" style={{ alignContent: "center" }}>
                 <div className="input-group mb-3" style={{ width: "75vw" }}>
                   <span className="input-group-text" id="basic-addon1">
                     Display Name
@@ -219,17 +232,32 @@ function HomeScreen() {
                 {displayNameError ? (
                   <p style={{ color: "red" }}>Display name cannot be empty.</p>
                 ) : null}
-                <div style={{ width: "100%" }}>
-                  <InputGroup className="mb-3">
-                    <InputGroup.Text>Weighted Words</InputGroup.Text>
-                    <InputGroup.Checkbox
-                      defaultChecked
-                      onClick={() => {
-                        setWeightWords(!weightedWords);
-                      }}
-                    />
-                  </InputGroup>
-                </div>
+
+                <InputGroup className="mb-3">
+                  <InputGroup.Text>Weighted Words</InputGroup.Text>
+                  <InputGroup.Checkbox
+                    defaultChecked
+                    onClick={() => {
+                      setWeightWords(!weightedWords);
+                    }}
+                  />
+                </InputGroup>
+
+                <InputGroup>
+                  <InputGroup.Text>Number of Rounds</InputGroup.Text>
+                  <input
+                    type="text"
+                    defaultValue={7}
+                    className={
+                      "form-control" +
+                      (numberOfRoundsError ? " is-invalid" : "")
+                    }
+                    aria-label="Username"
+                    aria-describedby="basic-addon1"
+                    onChange={(e) => handleRoundsChange(e.target.value)}
+                  />
+                </InputGroup>
+
                 <button className="btn btn-primary" onClick={handleCreate}>
                   Create
                 </button>

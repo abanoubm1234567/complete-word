@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/Lobby.css";
@@ -14,7 +14,6 @@ function Lobby() {
   const [firstLetter, setFirstLetter] = useState<string>("");
   const [lastLetter, setLastLetter] = useState<string>("");
   const [round, setRound] = useState<number>(1);
-  const [score, setScore] = useState<number>(0);
   const [roundComplete, setRoundComplete] = useState<boolean>(false);
   const [playerScores, setPlayerScores] = useState<Record<string, number>>({});
   const [numSkips, setNumSkips] = useState<number>(0);
@@ -26,6 +25,7 @@ function Lobby() {
   const lobbyLeaderRef = useRef<string | null>(null);
   const alreadySkippedRef = useRef<boolean>(false);
   const alreadyCreatedLobbyRef = useRef<boolean>(false);
+  const numRoundsRef = useRef<number>(7);
 
   const location = useLocation();
 
@@ -66,7 +66,7 @@ function Lobby() {
       .then((response) => {
         if (typeof response.data === "number") {
           console.log("Lobby created with key:", response.data);
-          
+
           setTimeout(() => {
             setNewLobbyKey(response.data); // Delay to ensure backend state is ready
           }, 500);
@@ -112,7 +112,7 @@ function Lobby() {
 
   useEffect(() => {
     const weightedWords = location.state?.weightedWords;
-    
+    numRoundsRef.current = location.state?.numRounds;
     if (!newLobbyKey || !displayNameRef.current || weightedWords === null) {
       return;
     }
@@ -121,7 +121,8 @@ function Lobby() {
       wsURL +
         `/lobby/${newLobbyKey}` +
         `?display_name=${encodeURIComponent(displayNameRef.current)}` +
-        `&weighted_words=${weightedWords}`
+        `&weighted_words=${weightedWords}` +
+        `&num_rounds=${numRoundsRef.current}`
     );
 
     socketRef.current = ws;
@@ -151,10 +152,10 @@ function Lobby() {
           case 1: // INFO
             switch (status) {
               case "ready":
-                setScore(0);
                 setGameCanStart(true);
                 setLobbyStatus("Game is ready to start!");
                 lobbyStatusRef.current = "ready";
+                numRoundsRef.current = message.numRounds;
                 break;
               case "waiting":
                 setGameCanStart(false);
@@ -189,11 +190,7 @@ function Lobby() {
                   setLastLetter(message.message[1]);
                 }
                 setRound(message.round);
-                if (message.round === 1) setScore(0);
 
-                if (message.message === displayNameRef.current) {
-                  setScore((prev) => prev + 1);
-                }
                 setNumSkips(message.numSkips);
                 break;
               case "completed":
@@ -240,7 +237,15 @@ function Lobby() {
       ws.close();
       console.log("WebSocket connection closed on cleanup.");
     };
-  }, [newLobbyKey, nav, apiKey, displayNameRef, wsURL]);
+  }, [
+    newLobbyKey,
+    nav,
+    apiKey,
+    displayNameRef,
+    wsURL,
+    location.state?.numRounds,
+    location.state?.weightedWords,
+  ]);
 
   useEffect(() => {
     const disconnectWebSocket = () => {
@@ -304,7 +309,7 @@ function Lobby() {
         }}
       >
         <p className="text-center">
-          {round === 8 ? "Concluding game..." : "Starting next round..."}
+          {round === numRoundsRef.current ? "Concluding game..." : "Starting next round..."}
         </p>
         <div className="spinner-border" role="status"></div>
       </div>
@@ -313,7 +318,6 @@ function Lobby() {
 
   const handleStart = () => {
     if (!socketRef.current) return;
-    setScore(0);
     setRound(1);
     lobbyStatusRef.current = "in_progress";
     setLobbyStatus("Game is in progress!");
@@ -329,17 +333,7 @@ function Lobby() {
 
   const gameView = () => (
     <div style={{ marginBottom: 20 }}>
-      <div
-        style={{
-          fontSize: "1.5rem",
-          fontWeight: "bold",
-          color: "#38e6c5",
-          marginBottom: 10,
-        }}
-      >
-        Score: {score}
-      </div>
-      <p>Round {round}/7</p>
+      <p>Round {round}/{numRoundsRef.current}</p>
       <p>
         <span style={{ fontWeight: "bold" }}>First letter:</span> {firstLetter}
       </p>

@@ -52,7 +52,8 @@ class Lobby:
         lastLetter: str = None,
         playersToScores: dict = None,
         numSkips: int = 0,
-        weightedWords: bool = True
+        weightedWords: bool = True,
+        numRounds: int = 7
         ):
 
         self.key = key
@@ -65,6 +66,7 @@ class Lobby:
         self.playersToScores = playersToScores or {}
         self.numSkips = numSkips
         self.weightedWords = weightedWords
+        self.numRounds = numRounds
 
     async def broadcast(self, message: str, player: str = None, message_type: MessageType = MessageType.INFO):
         for _, ws in self.playersToSockets.items():
@@ -80,7 +82,8 @@ class Lobby:
                         "firstLetter": self.firstLetter,
                         "lastLetter": self.lastLetter,
                         "scores": self.playersToScores,
-                        "numSkips": self.numSkips
+                        "numSkips": self.numSkips,
+                        "numRounds": self.numRounds
                     })
                 except Exception as e:
                     print(f"Error sending: {e}")
@@ -165,11 +168,10 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
             return d.check(word)
         print('inavlid word')
         return False
-    print("before accept")
     await websocket.accept()
-    print("after accept")
     display_name = websocket.query_params.get("display_name")
     weighted_words = True if websocket.query_params.get("weighted_words") == "true" else False
+    numRounds = websocket.query_params.get("num_rounds")
     if not display_name:
         print("no display name")
         await websocket.close()
@@ -180,10 +182,11 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
         print(f"Lobby {lobby_key} does not exist.")
         lobbies[lobby_key] = Lobby(key=lobby_key)
         lobby = lobbies[lobby_key]
-        lobbies[lobby_key].playersToSockets[display_name] = None
-        lobbies[lobby_key].playersToScores[display_name] = 0
-        lobbies[lobby_key].leader = display_name
-        lobbies[lobby_key].weightedWords = weighted_words
+        lobby.playersToSockets[display_name] = None
+        lobby.playersToScores[display_name] = 0
+        lobby.leader = display_name
+        lobby.weightedWords = weighted_words
+        lobby.numRounds = numRounds
         print("weighted_words from frontend: ", weighted_words)
         print(f"Created lobby with key: {lobby_key}")
 
@@ -244,7 +247,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                         lobby.lastLetter = random.choice(string.ascii_lowercase)
                     await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
 
-                    if lobby.round > 7:
+                    if lobby.round > int(lobby.numRounds):
                         lobby.status = LobbyStatus.COMPLETED
                         lobby.round = 1
                         await lobby.broadcast("Game completed!", None, MessageType.INFO)
