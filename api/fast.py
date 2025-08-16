@@ -262,7 +262,6 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                 else:
                     lobby.numSkips = 0
                     lobby.round += 1
-                    await lobby.broadcast("Word skipped!", None, MessageType.INFO)
                     lobby.firstLetter = random.choice(string.ascii_lowercase)
                     while lobby.firstLetter in bad_start:
                         lobby.firstLetter = random.choice(string.ascii_lowercase)
@@ -271,7 +270,7 @@ async def websocket_endpoint(websocket: WebSocket, lobby_key: str):
                         lobby.lastLetter = random.choice(string.ascii_lowercase)
                     await lobby.broadcast(lobby.firstLetter+lobby.lastLetter, None, MessageType.INFO)
 
-                    if lobby.round > 7:
+                    if lobby.round > int(lobby.numRounds):
                         lobby.status = LobbyStatus.COMPLETED
                         lobby.round = 1
                         await lobby.broadcast("Game completed!", None, MessageType.INFO)

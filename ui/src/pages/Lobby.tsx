@@ -309,7 +309,7 @@ function Lobby() {
         }}
       >
         <p className="text-center">
-          {round === numRoundsRef.current ? "Concluding game..." : "Starting next round..."}
+          {(gameCanStartAgain) ? "Concluding game..." : "Starting next round..."}
         </p>
         <div className="spinner-border" role="status"></div>
       </div>
